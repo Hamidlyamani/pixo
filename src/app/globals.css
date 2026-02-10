@@ -1,0 +1,125 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+
+
+
+
+
+/* my css */
+
+
+@keyframes slide-up {
+  from {
+    opacity: 0;
+    transform: translateY(40px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-slide-up {
+  animation: slide-up 0.3s ease-out;
+}
+
+
+.liquidGlass-wrapper {
+  position: relative;
+  overflow: hidden;
+  color: black;
+  box-shadow: 0 6px 6px rgba(0, 0, 0, 0.2), 0 0 20px rgba(0, 0, 0, 0.1);
+
+}
+
+.liquidGlass-effect {
+  position: absolute;
+  z-index: 0;
+  inset: 0;
+  backdrop-filter: blur(3px);
+  filter: url(#glass-distortion);
+  overflow: hidden;
+  isolation: isolate;
+}
+
+.liquidGlass-tint {
+  z-index: 1;
+  position: absolute;
+  inset: 0;
+  background: rgba(255, 255, 255, 0.35);
+}
+
+.liquidGlass-shine {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+
+  overflow: hidden;
+
+  box-shadow: inset 2px 2px 1px 0 rgba(255, 255, 255, 0.5),
+    inset -1px -1px 1px 1px rgba(255, 255, 255, 0.5);
+}
+.liquidGlass-text {
+  z-index: 3;
+  position: relative;
+}
+
+
+
+
+
+
+
+
+
+
+
+
+/* ------------------------------------------- */
+
+
+#swatch{
+  background: white;
+  box-shadow: 1em 1em 1em rgba(0, 0, 0, .1);
+  display: flex;
+  flex-direction: column;
+}
+
+
+
+input[type="color"] {
+  appearance: none;
+  -moz-appearance: none;
+  -webkit-appearance: none;
+  background: none;
+  border: 0;
+  cursor: pointer;
+  height: 14px;
+  padding: 0;
+  width: 20px;
+}
+
+*:focus{
+  border-radius: 0;
+  outline: none;
+}
+
+::-webkit-color-swatch-wrapper {
+  padding: 0;
+}
+
+::-webkit-color-swatch{
+  border: 0;
+  border-radius: 0;
+}
+
+::-moz-color-swatch,
+::-moz-focus-inner{
+  border: 0;
+}
+
+::-moz-focus-inner{
+  padding: 0;
+}
