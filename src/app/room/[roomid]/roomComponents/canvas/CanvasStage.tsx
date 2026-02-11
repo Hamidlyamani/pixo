@@ -1,148 +1,147 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Stage, Layer, Transformer, Group, Rect } from "react-konva";
 import { nanoid } from "nanoid";
-import { ToolOptions, Stroke } from "../../../../../../types";
+import { ToolOptions, Shape } from "../../../../../../types";
 import useCursor from "@/hooks/useCursor";
-import { createToolHandlers, ToolHandlers } from "../drawing/toolHandlers2";
-import { useStrokes } from "../drawing/useStrokes";
-import { getSocket } from "@/lib/socket";
 import RenderLayer from "./RenderLayer";
-import { initStrokeSync } from "../socket/strokeSync";
-import { useParams } from "next/navigation";
-/* ---------------------------------------------
-   Types
---------------------------------------------- */
+import { initShapeSync } from "../socket/strokeSync"; // rename later to shapeSync if you want
+import { createToolHandlers, ToolHandlers } from "../drawing/toolHandlers";
+import { useShapes } from "../drawing/useShapes";
 
 type CanvasStageProps = {
   tool: string;
   options: ToolOptions;
   sidebarWidth: number;
-  socket:any;
-  roomid:any
+  socket: any;
+  roomid: string;
 };
-
-type Point = { x: number; y: number };
-
-/* ---------------------------------------------
-   Constants
---------------------------------------------- */
 
 const CANVAS_WIDTH = 1000;
 const CANVAS_HEIGHT = 700;
-
-/* ---------------------------------------------
-   Component
---------------------------------------------- */
 
 export default function CanvasStage({
   tool,
   options,
   sidebarWidth,
   socket,
-  roomid
+  
 }: CanvasStageProps) {
   const stageRef = useRef<any>(null);
   const canvasGroupRef = useRef<any>(null);
   const trRef = useRef<any>(null);
   const [stageSize, setStageSize] = useState({ width: 0, height: 0 });
 
+  // stable authorId:
+  // - if socket has id, use it
+  // - else fallback once (not on every render)
+  const fallbackAuthorIdRef = useRef(nanoid());
+  const authorId = socket?.id ?? fallbackAuthorIdRef.current;
+
   /* ---------------------------------------------
-     Socket
+     Shapes store (single source of truth)
   --------------------------------------------- */
-
- 
-  const authorId = socket.id ?? nanoid(); // fallback safety
+  const shapesApi = useShapes(authorId);
+  const { shapes, addShape, updateShape, endShape, setAllShapes } = shapesApi;
 
   /* ---------------------------------------------
-     Stroke state (SINGLE SOURCE OF TRUTH)
+     Socket sync
   --------------------------------------------- */
+  const syncRef = useRef<ReturnType<typeof initShapeSync> | null>(null);
 
-  const strokesApi = useStrokes(authorId);
-  const { strokes, startStroke, updateStroke, endStroke, setStrokes } = strokesApi;
+  useEffect(() => {
+    if (!socket) return;
 
-   
+    const sync = initShapeSync({
+      socket,
+      authorId,
+      addShape,
+      updateShape,
+      endShape,
+      setAllShapes,
+    });
+
+    syncRef.current = sync;
+
+    return () => {
+      sync.destroy();
+      syncRef.current = null;
+    };
+  }, [socket, authorId, addShape, updateShape, endShape, setAllShapes]);
+
   /* ---------------------------------------------
-     Socket Sync (bridge)
+     Networked API used by toolHandlers
+     (local update + emit)
   --------------------------------------------- */
+  const networkedShapesApi = useMemo(
+    () => ({
+      addShape: (shape: Shape) => {
+        addShape(shape);
+        syncRef.current?.emitStart(shape);
+      },
+      updateShape: (id: string, payload: any, status?: Shape["status"]) => {
+        updateShape(id, payload, status);
+        syncRef.current?.emitUpdate(id, payload, status);
+      },
+      endShape: (id: string) => {
+        endShape(id);
+        syncRef.current?.emitEnd(id);
+      },
+    }),
+    [addShape, updateShape, endShape]
+  );
 
- const syncRef = useRef<ReturnType<typeof initStrokeSync> | null>(null);
-
-useEffect(() => {
-  if (!socket) return;
-
-  const sync = initStrokeSync({
-    socket,
-    authorId,
-    startStroke,
-    updateStroke,
-    endStroke,
-    setStrokes,
-  });
-
-  syncRef.current = sync;
-
-  return () => {
-    sync.destroy();
-    syncRef.current = null;
-  };
-}, [socket, authorId]);
-
-
-
-useEffect(() => {
-  if (!socket) return;
-    socket.emit("join-room", { roomid });
+  /* ---------------------------------------------
+     Tool handlers
+  --------------------------------------------- */
+  const activeShapeId = useRef<string | null>(null);
   
-}, [socket, roomid]);
+  const startPosRef = { current: { x: 0, y: 0 } };
+  const brushPointsRef = { current: [] as number[] };
 
+ const toolHandlersRef = useRef<Record<string, ToolHandlers> | null>(null);
 
-
-  /* ---------------------------------------------
-     Tool Handlers (LOCAL ONLY)
-  --------------------------------------------- */
-const networkedStrokesApi = {
-  startStroke: (stroke:Stroke) => {
-    startStroke(stroke);              // local
-    syncRef.current?.emitStart(stroke); // socket
-  },
-  updateStroke: (id:any, point:any) => {
-    
-    updateStroke(id, point);            // local
-    syncRef.current?.emitUpdate(id, point); // socket
-  },
-  endStroke: (id:any) => {
-    endStroke(id);                  // local
-    syncRef.current?.emitEnd(id);     // socket
-  },
-};
-
-const activeStrokeId = useRef<string | null>(null);
-
-  const toolHandlers: Record<string, ToolHandlers> =
-  createToolHandlers(
-    networkedStrokesApi,
+if (!toolHandlersRef.current) {
+  toolHandlersRef.current = createToolHandlers(
+    networkedShapesApi,
     options,
     authorId,
-    activeStrokeId
+    activeShapeId,
+    startPosRef,
+    brushPointsRef,
+    trRef
   );
-  
+}
+
+const toolHandlers = toolHandlersRef.current!;
+
+
+ /* ---------------------------------------------
+     Mouse position helper
+  --------------------------------------------- */
+
+
   /* ---------------------------------------------
      Mouse handlers
   --------------------------------------------- */
 
-  const handleMouseDown = (e: any) => {
+  const handleMouseDown = (e:any) => {
     const pos = stageRef.current?.getPointerPosition();
+
+
     if (!pos) return;
     if (!isInsideCanvas(pos)) return;
-    toolHandlers[tool]?.onDown?.({ pos });
+    toolHandlers[tool]?.onDown?.({ pos, target: e.target });
   };
 
   const handleMouseMove = () => {
     const pos = stageRef.current?.getPointerPosition();
+
+
     if (!pos) return;
- 
+    if (!isInsideCanvas(pos)) return;
+
     toolHandlers[tool]?.onMove?.({ pos });
   };
 
@@ -153,7 +152,6 @@ const activeStrokeId = useRef<string | null>(null);
   /* ---------------------------------------------
      Resize logic
   --------------------------------------------- */
-
   useEffect(() => {
     const resize = () => {
       setStageSize({
@@ -168,16 +166,14 @@ const activeStrokeId = useRef<string | null>(null);
   }, [sidebarWidth]);
 
   /* ---------------------------------------------
-     Canvas bounds check
+     Bounds check
   --------------------------------------------- */
-
   function isInsideCanvas(pos: { x: number; y: number }) {
     const group = canvasGroupRef.current;
     if (!group) return false;
 
     const transform = group.getAbsoluteTransform().copy();
     transform.invert();
-
     const localPos = transform.point(pos);
 
     return (
@@ -191,13 +187,11 @@ const activeStrokeId = useRef<string | null>(null);
   /* ---------------------------------------------
      Cursor per tool
   --------------------------------------------- */
-
   useCursor(stageRef, tool);
 
   /* ---------------------------------------------
      Render
   --------------------------------------------- */
-
   return (
     <Stage
       ref={stageRef}
@@ -208,7 +202,6 @@ const activeStrokeId = useRef<string | null>(null);
       onMouseUp={handleMouseUp}
       style={{ background: "#555" }}
     >
-      {/* Canvas background */}
       <Layer>
         <Group ref={canvasGroupRef}>
           <Rect
@@ -217,16 +210,12 @@ const activeStrokeId = useRef<string | null>(null);
             fill="white"
             listening={false}
           />
+          <Transformer ref={trRef} />
         </Group>
       </Layer>
 
       {/* Drawing layer */}
-      <RenderLayer strokes={strokes} />
-
-      {/* Transformer layer */}
-      <Layer>
-        <Transformer ref={trRef} />
-      </Layer>
+      <RenderLayer shapes={shapes} updateShape={networkedShapesApi.updateShape} />
     </Stage>
   );
 }

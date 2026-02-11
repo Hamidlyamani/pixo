@@ -18,7 +18,7 @@ export default function RoomPage() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
 
   const [options, setOptions] = useState({
-    color: "#333",
+    color: "#333333",
     strokeWidth: 4,
     fontSize: 24,
     fontFamily: "Arial",

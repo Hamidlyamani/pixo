@@ -19,19 +19,19 @@ export type ToolOptions = {
      brushSubType?: string; 
     opacity?: number;      
     spacing?: number;      
-    smoothing?: number;    
+    smoothing?: number;
+   
 };
 
-export type StrokeStatus = "drawing" | "done";
 
-export type Stroke = {
-  id: string;          // uuid / nanoid
-  tool: "line";        // for now ONLY line
-  points: number[];    // [x1, y1, x2, y2, ...]
-  style?: ToolOptions;
-  authorId: string;    // socket.id
-  status: StrokeStatus;
-};
+export type transform= {
+    x?: number;
+    y?: number;
+    rotation?: number;
+    scaleX?: number;
+    scaleY?: number;
+  };
+
 
 
 
@@ -112,4 +112,5 @@ export type Shape = {
   authorId: string;
   status: ShapeStatus;
   style?: ToolOptions;
+  transform?:transform,
 } & ToolPayload;

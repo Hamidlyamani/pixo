@@ -1,25 +1,22 @@
-
-import { Stroke } from "../../../../../../types";
+import { Shape } from "../../../../../../types";
 
 /* ---------------------------------------------
    Types
 --------------------------------------------- */
 
-type Point = { x: number; y: number };
-
-type StrokeSyncDeps = {
-  socket: any; // Socket from socket.io-client
+type ShapeSyncDeps = {
+  socket: any; // socket.io-client
   authorId: string;
 
-  // from useStrokes
-  startStroke: (stroke: Stroke) => void;
-  updateStroke: (id: string, point: Point) => void;
-  endStroke: (id: string) => void;
-  setStrokes: (strokes: Stroke[]) => void;
+  // from useShapes / store
+  addShape: (shape: Shape) => void;
+  updateShape: (id: string, payload: any, status?: Shape["status"]) => void;
+  endShape: (id: string) => void;
+  setAllShapes: (shapes: Shape[]) => void;
 };
 
 /* ---------------------------------------------
-   Throttle util (emit only)
+   Utils
 --------------------------------------------- */
 
 function throttle<T extends (...args: any[]) => void>(fn: T, delay: number) {
@@ -43,98 +40,76 @@ function throttle<T extends (...args: any[]) => void>(fn: T, delay: number) {
 }
 
 /* ---------------------------------------------
-   Main Init
+   Init Shape Sync
 --------------------------------------------- */
 
-export function initStrokeSync({
+export function initShapeSync({
   socket,
   authorId,
-  startStroke,
-  updateStroke,
-  endStroke,
-  setStrokes,
-}: StrokeSyncDeps) {
-  /* ---------------------------------------------
-     SOCKET -> LOCAL STATE
-  --------------------------------------------- */
+  addShape,
+  updateShape,
+  endShape,
+  setAllShapes,
+}: ShapeSyncDeps) {
+  /* -----------------------------
+     SOCKET → LOCAL
+  ------------------------------ */
 
-  socket.on("stroke:start", (stroke: Stroke) => {
-    // avoid self-echo
-    if (stroke.authorId === authorId) return;
-
-    startStroke(stroke);
+  socket.on("shape:start", (shape: Shape) => {
+    if (shape.authorId === authorId) return; // ignore self
+    addShape(shape);
   });
 
-  socket.on("stroke:update", (data: { id: string; point: Point; authorId: string }) => {
+  socket.on(
+    "shape:update",
+    (data: { id: string; payload: any; status?: Shape["status"]; authorId: string }) => {
+      if (data.authorId === authorId) return;
+      updateShape(data.id, data.payload, data.status);
+    }
+  );
+
+  socket.on("shape:end", (data: { id: string; authorId: string }) => {
     if (data.authorId === authorId) return;
-
-    updateStroke(data.id, data.point);
+    endShape(data.id);
   });
 
-  socket.on("stroke:end", (data: { id: string; authorId: string }) => {
-    if (data.authorId === authorId) return;
-
-    endStroke(data.id);
+  socket.on("room-state", (data: { shapes: Shape[] }) => {
+    setAllShapes(data.shapes || []);
   });
 
-  // room hydration (mid-session join)
-  socket.on("room:state", (strokes: Stroke[]) => {
-    setStrokes(strokes);
-  });
+  /* -----------------------------
+     LOCAL → SOCKET
+  ------------------------------ */
 
-  /* ---------------------------------------------
-     LOCAL -> SOCKET (emitters)
-  --------------------------------------------- */
-
-  const emitStart = (stroke: Stroke) => {
-    socket.emit("stroke:start", stroke);
+  const emitStart = (shape: Shape) => {
+    socket.emit("shape:start", shape);
   };
 
-  const _emitUpdate = (id: string, point: Point) => {
-
-    socket.emit("stroke:update", {
+  const _emitUpdate = (id: string, payload: any, status?: Shape["status"]) => {
+    socket.emit("shape:update", {
       id,
-      point,
+      payload,
+      status,
       authorId,
     });
   };
 
-  // throttled update emit (≈ 60fps → 16ms, but 25ms is safer)
-  const emitUpdate = throttle(_emitUpdate, 5);
+  // 20–30ms = smooth + safe
+  const emitUpdate = throttle(_emitUpdate, 25);
 
   const emitEnd = (id: string) => {
-    socket.emit("stroke:end", {
+    socket.emit("shape:end", {
       id,
       authorId,
     });
   };
 
-
-
-
-
-
-
-
-
-
-
-
-
-  /* ---------------------------------------------
-     CLEANUP
-  --------------------------------------------- */
-
   const destroy = () => {
-    socket.off("stroke:start");
-    socket.off("stroke:update");
-    socket.off("stroke:end");
-    socket.off("room:state");
+    socket.off("shape:start");
+    socket.off("shape:update");
+    socket.off("shape:end");
+    socket.off("room-state");
   };
-
-  /* ---------------------------------------------
-     Public API
-  --------------------------------------------- */
 
   return {
     emitStart,
