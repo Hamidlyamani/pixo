@@ -43,6 +43,29 @@ const updateShape = useCallback(
 );
 
 
+const updateTransform = useCallback(
+  (
+    id: string,
+    transform: NonNullable<Shape["transform"]>,
+    status?: Shape["status"]
+  ) => {
+    setShapes(prev =>
+      prev.map(s =>
+        s.id === id
+          ? {
+              ...s,
+              transform: { ...(s.transform ?? {}), ...transform },
+              status: status ?? s.status,
+            }
+          : s
+      )
+    );
+  },
+  []
+);
+
+
+
   /* ---------------------------------------------
      End shape (shape:end)
   --------------------------------------------- */
@@ -77,6 +100,7 @@ const updateShape = useCallback(
     // actions
     addShape,
     updateShape,
+    updateTransform, 
     endShape,
 
     // sync / hydration

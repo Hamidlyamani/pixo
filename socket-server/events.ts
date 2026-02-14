@@ -8,6 +8,7 @@ import {
 } from "./rooms.ts";
 import { createUser, setUserName, getUser, removeUser } from "./users.ts";
 import type { Shape } from "../types";
+import { nanoid } from "nanoid";
 
 function isValidRoomId(roomId: any): roomId is string {
   return typeof roomId === "string" && roomId.trim().length > 0;
@@ -26,8 +27,6 @@ function isValidUserName(name: any): name is string {
  * - shape has id/authorId/tool/status
  * - authorId must be socket.id
  * - payload exists
- *
- * We keep it minimal to avoid over-engineering.
  */
 function isValidShape(shape: any, socketId: string): shape is Shape {
   if (!shape || typeof shape !== "object") return false;
@@ -39,7 +38,6 @@ function isValidShape(shape: any, socketId: string): shape is Shape {
   if (typeof shape.tool !== "string") return false;
   if (shape.status !== "drawing" && shape.status !== "done") return false;
 
-  // payload must exist (structure depends on tool, validated client-side for now)
   if (!("payload" in shape)) return false;
 
   return true;
@@ -50,87 +48,155 @@ export function registerEvents(io: Server, socket: Socket) {
 
   let currentRoomId: string | null = null;
 
-  /* -----------------------------
-     Lobby: get public rooms (refresh only)
-  ------------------------------ */
+  const usersPayload = (roomId: string) => {
+    const room = getRoom(roomId);
+    if (!room) return [];
+    return room.users
+      .map((id) => getUser(id))
+      .filter(Boolean)
+      .map((u) => ({ id: u!.socketId, name: u!.name }));
+  };
+
   socket.on("public-rooms:get", () => {
     socket.emit("public-rooms:list", getPublicRooms());
   });
 
-  /* -----------------------------
-     Join room (implicit room creation)
-     Payload: { roomId, username, roomName?, isPublic? }
-     roomName only applied at creation (A)
-  ------------------------------ */
+  // ✅ CREATE
   socket.on(
-    "join-room",
-    (payload: {
-      roomId: string;
-      username?: string;
-      roomName?: string;
-      isPublic?: boolean;
-    }) => {
-      const { roomId, username, roomName, isPublic } = payload || ({} as any);
-
-      if (!isValidRoomId(roomId)) {
-        socket.emit("join:error", { code: "BAD_ROOM_ID" });
+    "room:create",
+    (payload: { roomName?: string; isPublic?: boolean; username?: string }) => {
+      const username = payload?.username;
+      if (username && !isValidUserName(username)) {
+        socket.emit("room:error", { code: "BAD_USERNAME" });
         return;
       }
+      if (username) setUserName(socket.id, username);
 
-      // leave previous room
-      if (currentRoomId && currentRoomId !== roomId) {
-        socket.leave(currentRoomId);
-        removeUserFromRoom(currentRoomId, socket.id);
-      }
+      const roomId = nanoid(10);
+      const roomName = (payload?.roomName?.trim() || "Untitled room").slice(0, 30);
+      const isPublic = Boolean(payload?.isPublic);
 
-      // username
-      if (isValidUserName(username)) {
-        setUserName(socket.id, username);
-      }
-
-      // create room if missing (roomName only at creation)
-      const roomExisted = Boolean(getRoom(roomId));
       const room = getOrCreateRoom({
         roomId,
-        roomName: roomExisted ? undefined : roomName,
-        isPublic: isPublic ?? false,
+        roomName,
+        isPublic,
+        ownerId: socket.id,
       });
-
-      // capacity
-      if (room.users.length >= 5 && !room.users.includes(socket.id)) {
-        socket.emit("room-full", { roomId });
-        return;
-      }
 
       addUserToRoom(roomId, socket.id);
       socket.join(roomId);
       currentRoomId = roomId;
 
-      const users = room.users
-        .map((id) => getUser(id))
-        .filter(Boolean)
-        .map((u) => ({ id: u!.socketId, name: u!.name }));
+      socket.emit("room:created", {
+        roomId,
+        roomName: room.roomName,
+        isPublic: room.isPublic,
+      });
 
-      // NOTE: room.strokes currently holds shapes (rename later if you want)
-      socket.emit("room-state", {
+      socket.emit("room:state", {
         roomId: room.roomId,
         roomName: room.roomName,
-        users,
-        shapes: room.strokes, // better name for client
+        isPublic: room.isPublic,
+        ownerId: room.ownerId,
+        users: usersPayload(roomId),
+        shapes: room.strokes,
       });
+
+      io.to(roomId).emit("room:users", { roomId, users: usersPayload(roomId) });
     }
   );
 
-  /* -----------------------------
-     Leave room
-  ------------------------------ */
-  socket.on("leave-room", (payload: { roomId: string }) => {
+  // ✅ JOIN
+  socket.on("room:join", (payload: { roomId: string; username?: string }) => {
     const roomId = payload?.roomId;
-    if (!currentRoomId || currentRoomId !== roomId) return;
+    const username = payload?.username;
 
-    socket.leave(roomId);
-    removeUserFromRoom(roomId, socket.id);
-    currentRoomId = null;
+    if (!isValidRoomId(roomId)) {
+      socket.emit("room:error", { code: "BAD_ROOM_ID" });
+      return;
+    }
+
+    const room = getRoom(roomId);
+    if (!room) {
+      socket.emit("room:error", { code: "ROOM_NOT_FOUND" });
+      return;
+    }
+
+    if (username && !isValidUserName(username)) {
+      socket.emit("room:error", { code: "BAD_USERNAME" });
+      return;
+    }
+    if (username) setUserName(socket.id, username);
+
+    if (currentRoomId && currentRoomId !== roomId) {
+      socket.leave(currentRoomId);
+      removeUserFromRoom(currentRoomId, socket.id);
+    }
+
+    addUserToRoom(roomId, socket.id);
+    socket.join(roomId);
+    currentRoomId = roomId;
+
+    socket.emit("room:state", {
+      roomId: room.roomId,
+      roomName: room.roomName,
+      isPublic: room.isPublic,
+      ownerId: room.ownerId,
+      users: usersPayload(roomId),
+      shapes: room.strokes,
+    });
+
+    io.to(roomId).emit("room:users", { roomId, users: usersPayload(roomId) });
+  });
+
+  // ✅ OWNER-ONLY visibility
+  socket.on("room:set-public", (payload: { roomId: string; isPublic: boolean }) => {
+    const { roomId, isPublic } = payload || ({} as any);
+
+    if (!isValidRoomId(roomId)) {
+      socket.emit("room:error", { code: "BAD_ROOM_ID" });
+      return;
+    }
+
+    const room = getRoom(roomId);
+    if (!room) {
+      socket.emit("room:error", { code: "ROOM_NOT_FOUND" });
+      return;
+    }
+
+    if (room.ownerId !== socket.id) {
+      socket.emit("room:error", { code: "NOT_OWNER" });
+      return;
+    }
+
+    room.isPublic = Boolean(isPublic);
+
+    io.to(roomId).emit("room:visibility", {
+      roomId,
+      isPublic: room.isPublic,
+    });
+  });
+
+  socket.on("room:get-invite", (payload: { roomId: string }) => {
+    const roomId = payload?.roomId;
+
+    if (!isValidRoomId(roomId)) {
+      socket.emit("room:error", { code: "BAD_ROOM_ID" });
+      return;
+    }
+
+    const room = getRoom(roomId);
+    if (!room) {
+      socket.emit("room:error", { code: "ROOM_NOT_FOUND" });
+      return;
+    }
+
+    socket.emit("room:invite", {
+      roomId,
+      roomName: room.roomName,
+      isPublic: room.isPublic,
+      ownerId: room.ownerId,
+    });
   });
 
   /* -----------------------------
@@ -148,18 +214,11 @@ export function registerEvents(io: Server, socket: Socket) {
   });
 
   /* -----------------------------
-     Shape update
-     Simple rule: replace payload + status if provided
-     Client sends full payload each time (even for brush)
+     Shape update (payload)
   ------------------------------ */
   socket.on(
     "shape:update",
-    (data: {
-      id: string;
-      authorId: string;
-      payload: any;
-      status?: "drawing" | "done";
-    }) => {
+    (data: { id: string; authorId: string; payload: any; status?: "drawing" | "done" }) => {
       if (!currentRoomId) return;
 
       const room = getRoom(currentRoomId);
@@ -172,13 +231,47 @@ export function registerEvents(io: Server, socket: Socket) {
       const shape = room.strokes.find((s: any) => s.id === data.id);
       if (!shape) return;
 
-      // replace payload (keeps server dumb)
       shape.payload = data.payload;
       if (data.status === "drawing" || data.status === "done") {
         shape.status = data.status;
       }
 
       socket.to(currentRoomId).emit("shape:update", data);
+    }
+  );
+
+  /* -----------------------------
+     ✅ Shape transform (NEW)
+     Rule: store transform on the shape object (doesn't touch payload)
+  ------------------------------ */
+  socket.on(
+    "shape:transform",
+    (data: {
+      id: string;
+      authorId: string;
+      transform: any; // keep minimal, client ensures structure
+      status?: "drawing" | "done";
+    }) => {
+      if (!currentRoomId) return;
+
+      const room = getRoom(currentRoomId);
+      if (!room) return;
+
+      if (!data || typeof data.id !== "string") return;
+      if (data.authorId !== socket.id) return;
+      if (!("transform" in data)) return;
+
+      const shape = room.strokes.find((s: any) => s.id === data.id);
+      if (!shape) return;
+
+      // store transform separately
+      (shape as any).transform = data.transform;
+
+      if (data.status === "drawing" || data.status === "done") {
+        shape.status = data.status;
+      }
+
+      socket.to(currentRoomId).emit("shape:transform", data);
     }
   );
 
@@ -204,10 +297,7 @@ export function registerEvents(io: Server, socket: Socket) {
      Disconnect cleanup
   ------------------------------ */
   socket.on("disconnect", () => {
-    if (currentRoomId) {
-      removeUserFromRoom(currentRoomId, socket.id);
-    }
+    if (currentRoomId) removeUserFromRoom(currentRoomId, socket.id);
     removeUser(socket.id);
-    console.log("disconnected:", socket.id);
   });
 }

@@ -1,5 +1,6 @@
 import { nanoid } from "nanoid";
 import { Shape, ToolOptions } from "../../../../../../types";
+import Konva from "konva";
 
 /* ---------------------------------------------
    Types
@@ -32,12 +33,14 @@ type ShapesApi = {
 
 export function createToolHandlers(
   shapesApi: ShapesApi,
-  options: ToolOptions,
+  optionsRef: React.MutableRefObject<ToolOptions>,
   authorId: string,
   activeShapeIdRef: React.MutableRefObject<string | null>,
   startPosRef: React.MutableRefObject<{ x: number; y: number }>,
   brushPointsRef: React.MutableRefObject<number[]>,
   trRef: any,
+  canvasGroupRef: React.MutableRefObject<Konva.Group | null>
+
 ): Record<string, ToolHandlers> {
   const { addShape, updateShape, endShape } = shapesApi;
 
@@ -60,12 +63,21 @@ export function createToolHandlers(
     brushPointsRef.current.length = 0;
   };
 
+  const panState = {
+    isPanning: false,
+    startPointer: { x: 0, y: 0 },
+    startGroupPos: { x: 0, y: 0 },
+  };
+
+
+
   return {
     /* ===== BRUSH ===== */
     brush: {
       onDown: ({ pos }) => {
         brushPointsRef.current.length = 0;
         brushPointsRef.current.push(pos.x, pos.y);
+        const options = optionsRef.current;
         startShape({
           id: nanoid(),
           tool: "brush",
@@ -90,7 +102,7 @@ export function createToolHandlers(
       onDown: ({ pos }) => {
         brushPointsRef.current.length = 0;
         brushPointsRef.current.push(pos.x, pos.y);
-
+        const options = optionsRef.current;
         startShape({
           id: nanoid(),
           tool: "eraser",
@@ -114,6 +126,7 @@ export function createToolHandlers(
     line: {
       onDown: ({ pos }) => {
         startPosRef.current = { x: pos.x, y: pos.y };
+        const options = optionsRef.current;
         startShape({
           id: nanoid(),
           tool: "line",
@@ -146,7 +159,7 @@ export function createToolHandlers(
     rect: {
       onDown: ({ pos }) => {
         startPosRef.current = { x: pos.x, y: pos.y };
-
+        const options = optionsRef.current;
         startShape({
           id: nanoid(),
           tool: "rect",
@@ -179,7 +192,7 @@ export function createToolHandlers(
     ellipse: {
       onDown: ({ pos }) => {
         startPosRef.current = { x: pos.x, y: pos.y };
-
+        const options = optionsRef.current;
         startShape({
           id: nanoid(),
           tool: "ellipse",
@@ -216,6 +229,7 @@ export function createToolHandlers(
 
           if (target.getClassName() === "Text") return;
         }
+        const options = optionsRef.current;
         addShape({
           id: nanoid(),
           tool: "text",
@@ -233,48 +247,60 @@ export function createToolHandlers(
 
 
     /* ===== SELECT (LOCAL ONLY) ===== */
-   select: {
-  onDown: ({ target }) => {
-    if (!target) return;
+    select: {
+      onDown: ({ target }) => {
+        if (!target) return;
 
-    // ignore transformer & its children
-    const name = target.name?.() || "";
-    if (target === trRef.current) return;
-    if (name.includes("transformer") || name.includes("anchor")) return;
+        // ignore transformer & its children
+        const name = target.name?.() || "";
+        if (target === trRef.current) return;
+        if (name.includes("transformer") || name.includes("anchor")) return;
 
-    // si clic sur le stage (vide) => déselection
-    if (target.getClassName?.() === "Stage") {
-      trRef.current.nodes([]);
-      return;
-    }
+        // si clic sur le stage (vide) => déselection
+        if (target.getClassName?.() === "Stage") {
+          trRef.current.nodes([]);
+          return;
+        }
 
-    trRef.current.nodes([target]);
-  },
-},
+        trRef.current.nodes([target]);
+      },
+    },
+    hand: {
+      onDown: ({ pos }) => {
+        const group = canvasGroupRef.current;
+        if (!group) return;
 
+        panState.isPanning = true;
+        panState.startPointer = { x: pos.x, y: pos.y };
+        panState.startGroupPos = { x: group.x(), y: group.y() };
+      },
 
-    // node.on("dragmove", () => {
-    //   updateShape(shape.id, {
-    //     x: node.x(),
-    //     y: node.y(),
-    //   });
-    //   emitShapeUpdate(...);
-    // });
+      onMove: ({ pos }) => {
+        if (!panState.isPanning) return;
+        const group = canvasGroupRef.current;
+        if (!group) return;
 
-    // node.on("transformend", () => {
-    //   updateShape(shape.id, {
-    //     x: node.x(),
-    //     y: node.y(),
-    //     rotation: node.rotation(),
-    //     scaleX: node.scaleX(),
-    //     scaleY: node.scaleY(),
-    //   });
-    //   emitShapeUpdate(...);
-    // });
+        const dx = pos.x - panState.startPointer.x;
+        const dy = pos.y - panState.startPointer.y;
 
+        group.position({
+          x: panState.startGroupPos.x + dx,
+          y: panState.startGroupPos.y + dy,
+        });
 
+        group.getLayer()?.batchDraw();
+      },
 
-  
-
+      onUp: () => {
+        panState.isPanning = false;
+      },
+    },
   };
-}
+
+
+
+
+
+
+
+};

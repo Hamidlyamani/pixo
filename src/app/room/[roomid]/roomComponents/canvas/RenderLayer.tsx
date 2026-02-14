@@ -1,51 +1,71 @@
 "use client";
 
-import {
-  Layer,
-  Line,
-  Rect,
-  Ellipse,
-  Text,
-} from "react-konva";
-import { Shape } from "../../../../../../types";
+import { Layer, Line, Rect, Ellipse, Text, Group } from "react-konva";
+import type Konva from "konva";
+import { Shape, transform as Transform } from "../../../../../../types";
+import { getBrushLineProps } from "../helpers/Brushhelpers";
 
 interface RenderLayerProps {
   shapes: Shape[];
-  updateShape: any;
+  // updateShape sert UNIQUEMENT à changer le payload (géométrie/texte)
+  updateShape: (id: string, payloadPatch: any, status?: "drawing" | "done") => void;
+  // updateTransform sert UNIQUEMENT à changer transform (offset/rot/scale)
+  updateTransform: (id: string, t: Transform, status?: "drawing" | "done") => void;
 }
 
-export default function RenderLayer({ shapes, updateShape }: RenderLayerProps) {
+const DEFAULT_T: Required<Transform> = {
+  x: 0,
+  y: 0,
+  rotation: 0,
+  scaleX: 1,
+  scaleY: 1,
+};
+
+export default function RenderLayer({ shapes, updateShape, updateTransform }: RenderLayerProps) {
   return (
-    <Layer>
+    <Group>
       {shapes.map((shape) => {
         const style = shape.style;
-        const t = shape.transform ?? { x: 0, y: 0, rotation: 0, scaleX: 1, scaleY: 1 };
+        const t = { ...DEFAULT_T, ...(shape.transform ?? {}) };
 
         switch (shape.tool) {
           /* ===== BRUSH / ERASER ===== */
-          case "brush":
+          case "brush": {
+            const { points } = shape.payload;
+            const brushProps = getBrushLineProps(shape.style); // style contient tes options de brush
+
+            return (
+              <Line
+                key={shape.id}
+                points={points}
+                x={t.x ?? 0}
+                y={t.y ?? 0}
+                draggable= {false}
+                {...brushProps}
+                onDragEnd={(e) => {
+                  const node = e.target as Konva.Line;
+                  updateTransform(shape.id, { x: node.x(), y: node.y() }, "done");
+                }}
+              />
+            );
+          }
           case "eraser": {
             const { points } = shape.payload;
+
             return (
               <Line
                 key={shape.id}
                 points={points}
                 x={t.x}
                 y={t.y}
-                stroke={style?.color ?? "#000"}
+                stroke="#ffffff"
                 strokeWidth={style?.strokeWidth ?? 2}
                 opacity={style?.opacity ?? 1}
                 lineCap="round"
                 lineJoin="round"
-                draggable
-                globalCompositeOperation={
-                  shape.tool === "eraser" ? "destination-out" : "source-over"
-                }
-                onDragEnd={(e) => {
-                  updateShape(shape.id, {
-                    transform: { ...t, x: e.target.x(), y: e.target.y() }
-                  });
-                }}
+                draggable= {false}
+                globalCompositeOperation="source-over"
+              
               />
             );
           }
@@ -53,6 +73,7 @@ export default function RenderLayer({ shapes, updateShape }: RenderLayerProps) {
           /* ===== LINE ===== */
           case "line": {
             const { x1, y1, x2, y2 } = shape.payload;
+
             return (
               <Line
                 key={shape.id}
@@ -66,9 +87,26 @@ export default function RenderLayer({ shapes, updateShape }: RenderLayerProps) {
                 lineCap="round"
                 draggable
                 onDragEnd={(e) => {
-                  updateShape(shape.id, {
-                    transform: { ...t, x: e.target.x(), y: e.target.y() }
-                  });
+                  const node = e.target as Konva.Line;
+                  updateTransform(shape.id, { x: node.x(), y: node.y() }, "done");
+                }}
+                onTransformEnd={(e) => {
+                  const node = e.target as Konva.Line;
+                  updateTransform(
+                    shape.id,
+                    {
+                      x: node.x(),
+                      y: node.y(),
+                      rotation: node.rotation(),
+                      scaleX: node.scaleX(),
+                      scaleY: node.scaleY(),
+                    },
+                    "done"
+                  );
+
+                  // évite l’accumulation de scale si tu utilises Transformer
+                  node.scaleX(1);
+                  node.scaleY(1);
                 }}
               />
             );
@@ -77,11 +115,12 @@ export default function RenderLayer({ shapes, updateShape }: RenderLayerProps) {
           /* ===== RECT ===== */
           case "rect": {
             const { x, y, width, height } = shape.payload;
+
             return (
               <Rect
                 key={shape.id}
-                x={x + (t.x ?? 0)}
-                y={y + (t.y ?? 0)}
+                x={x + t.x}
+                y={y + t.y}
                 width={width}
                 height={height}
                 rotation={t.rotation}
@@ -93,21 +132,27 @@ export default function RenderLayer({ shapes, updateShape }: RenderLayerProps) {
                 opacity={style?.opacity ?? 1}
                 draggable
                 onDragEnd={(e) => {
-                  updateShape(shape.id, {
-                    transform: { ...t, x: e.target.x() - x, y: e.target.y() - y }
-                  });
+                  const node = e.target as Konva.Rect;
+                  // offset = position finale - base payload
+                  updateTransform(shape.id, { x: node.x() - x, y: node.y() - y }, "done");
                 }}
                 onTransformEnd={(e) => {
-                  const node = e.target;
-                  updateShape(shape.id, {
-                    transform: {
+                  const node = e.target as Konva.Rect;
+
+                  updateTransform(
+                    shape.id,
+                    {
                       x: node.x() - x,
                       y: node.y() - y,
                       rotation: node.rotation(),
                       scaleX: node.scaleX(),
                       scaleY: node.scaleY(),
-                    }
-                  });
+                    },
+                    "done"
+                  );
+
+                  node.scaleX(1);
+                  node.scaleY(1);
                 }}
               />
             );
@@ -116,11 +161,12 @@ export default function RenderLayer({ shapes, updateShape }: RenderLayerProps) {
           /* ===== ELLIPSE ===== */
           case "ellipse": {
             const { x, y, radiusX, radiusY } = shape.payload;
+
             return (
               <Ellipse
                 key={shape.id}
-                x={x + (t.x ?? 0)}
-                y={y + (t.y ?? 0)}
+                x={x + t.x}
+                y={y + t.y}
                 radiusX={radiusX}
                 radiusY={radiusY}
                 rotation={t.rotation}
@@ -132,21 +178,26 @@ export default function RenderLayer({ shapes, updateShape }: RenderLayerProps) {
                 opacity={style?.opacity ?? 1}
                 draggable
                 onDragEnd={(e) => {
-                  updateShape(shape.id, {
-                    transform: { ...t, x: e.target.x() - x, y: e.target.y() - y }
-                  });
+                  const node = e.target as Konva.Ellipse;
+                  updateTransform(shape.id, { x: node.x() - x, y: node.y() - y }, "done");
                 }}
                 onTransformEnd={(e) => {
-                  const node = e.target;
-                  updateShape(shape.id, {
-                    transform: {
+                  const node = e.target as Konva.Ellipse;
+
+                  updateTransform(
+                    shape.id,
+                    {
                       x: node.x() - x,
                       y: node.y() - y,
                       rotation: node.rotation(),
                       scaleX: node.scaleX(),
                       scaleY: node.scaleY(),
-                    }
-                  });
+                    },
+                    "done"
+                  );
+
+                  node.scaleX(1);
+                  node.scaleY(1);
                 }}
               />
             );
@@ -155,11 +206,12 @@ export default function RenderLayer({ shapes, updateShape }: RenderLayerProps) {
           /* ===== TEXT ===== */
           case "text": {
             const { x, y, text } = shape.payload;
+
             return (
               <Text
                 key={shape.id}
-                x={x + (t.x ?? 0)}
-                y={y + (t.y ?? 0)}
+                x={x + t.x}
+                y={y + t.y}
                 text={text}
                 rotation={t.rotation}
                 scaleX={t.scaleX}
@@ -167,18 +219,36 @@ export default function RenderLayer({ shapes, updateShape }: RenderLayerProps) {
                 fontSize={style?.fontSize ?? 18}
                 fill={style?.color ?? "#000"}
                 opacity={style?.opacity ?? 1}
+                fontFamily={style?.fontFamily ?? "Arial"}
                 draggable
                 onDragEnd={(e) => {
-                  updateShape(shape.id, {
-                    transform: { ...t, x: e.target.x() - x, y: e.target.y() - y }
-                  });
+                  const node = e.target as Konva.Text;
+                  updateTransform(shape.id, { x: node.x() - x, y: node.y() - y }, "done");
+                }}
+                onTransformEnd={(e) => {
+                  const node = e.target as Konva.Text;
+                  updateTransform(
+                    shape.id,
+                    {
+                      x: node.x() - x,
+                      y: node.y() - y,
+                      rotation: node.rotation(),
+                      scaleX: node.scaleX(),
+                      scaleY: node.scaleY(),
+                    },
+                    "done"
+                  );
+                  node.scaleX(1);
+                  node.scaleY(1);
                 }}
                 onDblClick={(e) => {
-                  const node = e.target;
+                  const node = e.target as Konva.Text;
                   const stage = node.getStage();
                   if (!stage) return;
+
                   editTextNode(node, stage, (value) => {
-                    updateShape(shape.id, { payload: { ...shape.payload, text: value } }, "done");
+                    // Ici: changement de contenu => payload
+                    updateShape(shape.id, { ...shape.payload, text: value }, "done");
                   });
                 }}
               />
@@ -189,11 +259,9 @@ export default function RenderLayer({ shapes, updateShape }: RenderLayerProps) {
             return null;
         }
       })}
-    </Layer>
+    </Group>
   );
 }
-
-
 
 function editTextNode(textNode: any, stage: any, onCommit: (value: string) => void) {
   const textPosition = textNode.absolutePosition();

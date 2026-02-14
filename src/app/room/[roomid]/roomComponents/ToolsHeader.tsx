@@ -1,15 +1,14 @@
 "use client";
 
 import {
-  FaPaintBrush,
   FaEraser,
   FaMousePointer,
   FaFont,
   FaSlash,
-  FaSquare,
-  FaCircle,
+  FaRegSquare,
+  FaRegCircle ,
   FaHandPaper
-} from "react-icons/fa";
+} from "react-icons/fa";import { IoIosBrush } from "react-icons/io";
 import { TOOLS } from "./helpers/tools";
 
 export default function ToolsHeader({ tool, setTool }: any) {
@@ -32,13 +31,13 @@ export default function ToolsHeader({ tool, setTool }: any) {
       <div className="liquidGlass-tint"></div>
       <div className="liquidGlass-shine"></div>
       <div className="liquidGlass-text !flex  items-center  justify-around gap-2 px-2 ">
-        <Button value={TOOLS.BRUSH} icon={<FaPaintBrush />} />
+        <Button value={TOOLS.BRUSH} icon={<IoIosBrush  />} />
         <Button value={TOOLS.ERASER} icon={<FaEraser />} />
         <Button value={TOOLS.SELECT} icon={<FaMousePointer />} />
         <Button value={TOOLS.TEXT} icon={<FaFont />} />
         <Button value={TOOLS.LINE} icon={<FaSlash />} />
-        <Button value={TOOLS.RECT} icon={<FaSquare />} />
-        <Button value={TOOLS.ELLIPSE} icon={<FaCircle />} />
+        <Button value={TOOLS.RECT} icon={<FaRegSquare  />} />
+        <Button value={TOOLS.ELLIPSE} icon={<FaRegCircle  />} />
         <Button value={TOOLS.HAND} icon={<FaHandPaper />} />
       </div>
     </div>

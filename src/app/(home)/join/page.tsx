@@ -55,46 +55,87 @@ export default function HomeJoinBox() {
   // -----------------------------
   // Helpers
   // -----------------------------
-  const saveName = () => {
-    const trimmed = name.trim();
-    if (trimmed) localStorage.setItem("player_name", trimmed);
-  };
 
-  const createRoom = () => {
-    if (!canStart) return;
+const USERNAME_KEY = "wb_username";
 
-    const roomId = nanoid(10);
-    const username = name.trim();
-    const rName = roomName.trim();
+const saveUsername = (name: string) => {
+  localStorage.setItem(USERNAME_KEY, name);
+};
 
-    saveName();
+const loadUsername = () => {
+  return localStorage.getItem(USERNAME_KEY) || "";
+};
 
-    // Create implicitly via join-room (A: roomName only at creation)
-    socket.emit("join-room", {
-      roomId,
-      username,
-      roomName: rName || "Untitled room",
-      isPublic: true, // because you want it in public list
-    });
+const createRoom = () => {
+  if (!canStart) return;
 
+  const username = name.trim();
+  const rName = roomName.trim();
+
+  if (!username) return;
+
+  saveUsername(username);
+
+  // ⚠️ ne push PAS avant d’avoir roomId
+  socket.emit("room:create", {
+    roomName: rName || "Untitled room",
+    username,
+    isPublic: true,
+  });
+
+  const onCreated = ({ roomId }: { roomId: string }) => {
+    cleanup();
     router.push(`/room/${roomId}`);
   };
 
-  const joinPublicRoom = (roomId: string) => {
-    if (!canJoinPublic) return;
+  const onError = (err: any) => {
+    cleanup();
+    console.log("room:error", err);
+  };
 
-    const username = name.trim();
-    saveName();
+  const cleanup = () => {
+    socket.off("room:created", onCreated);
+    socket.off("room:error", onError);
+  };
 
-    socket.emit("join-room", {
-      roomId,
-      username,
-      // roomName NOT sent here (A: only at creation)
-      isPublic: true,
-    });
+  socket.on("room:created", onCreated);
+  socket.on("room:error", onError);
+};
 
+
+const joinPublicRoom = (roomId: string) => {
+  if (!canJoinPublic) return;
+
+  const username = name.trim();
+  if (!username) return;
+
+  saveUsername(username);
+
+  socket.emit("room:join", {
+    roomId,
+    username,
+  });
+
+  const onState = (state: any) => {
+    cleanup();
     router.push(`/room/${roomId}`);
   };
+
+  const onError = (err: any) => {
+    cleanup();
+    console.log("room:error", err);
+  };
+
+  const cleanup = () => {
+    socket.off("room:state", onState);
+    socket.off("room:error", onError);
+  };
+
+  // On attend room:state comme preuve que join OK
+  socket.on("room:state", onState);
+  socket.on("room:error", onError);
+};
+
 
   return (
     <div className="w-full max-w-xl rounded-3xl border border-black/10 bg-white/80 p-5 shadow-[0_18px_50px_rgba(0,0,0,0.12)] backdrop-blur-xl">

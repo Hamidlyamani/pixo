@@ -8,29 +8,8 @@ export const BRUSH_TYPES = {
 
 export type BrushCategory = typeof BRUSH_TYPES[keyof typeof BRUSH_TYPES];
 
-export type ToolOptions = {
-    color?: string;
-    strokeWidth?: number;
-    fontSize?: number;
-    fill?: string;
-    gradientFrom?: string;
-    gradientTo: string;
-    brushCategory?: BrushCategory;
-     brushSubType?: string; 
-    opacity?: number;      
-    spacing?: number;      
-    smoothing?: number;
-   
-};
+export type RoomUser = { id: string; name: string };
 
-
-export type transform= {
-    x?: number;
-    y?: number;
-    rotation?: number;
-    scaleX?: number;
-    scaleY?: number;
-  };
 
 
 
@@ -53,6 +32,20 @@ export type transform= {
 
 
 // ---------------------------- Sockit io ----------------------------
+
+export type ToolOptions = {
+    color?: string;
+    strokeWidth?: number;
+    fontSize?: number;
+    fill?: string;
+    fontFamily:string;
+    brushCategory?: BrushCategory;
+    brushSubType?: string; 
+    opacity?: number;      
+    spacing?: number;      
+    smoothing?: number;
+   
+};
 
 
 export type BrushPayload = {
@@ -93,6 +86,14 @@ export type SelectPayload = {
   targetId: string | null;
 };
 
+export type transform= {
+    x?: number;
+    y?: number;
+    rotation?: number;
+    scaleX?: number;
+    scaleY?: number;
+  };
+
 
 export type ToolPayload =
   | { tool: "brush"; payload: BrushPayload }
@@ -104,7 +105,6 @@ export type ToolPayload =
   | { tool: "select"; payload: SelectPayload };
 
 
-  
   export type ShapeStatus = "drawing" | "done";
 
 export type Shape = {
