@@ -4,11 +4,11 @@ import { useEffect, useState } from "react";
 
 const images = [
 
+  "/imgs/home1.png",
   "/imgs/3.webp",
-  "/imgs/2.png",
+  "/imgs/hom.png",
   "/imgs/6.png",
-  "/imgs/4.png",
-  "/imgs/5.png",
+  "/imgs/home7.png",
 ];
 
 export default function BackgroundSlider({

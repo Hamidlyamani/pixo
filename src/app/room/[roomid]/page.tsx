@@ -18,7 +18,29 @@ export default function RoomPage() {
   const socket = getSocket();
 
   const [tool, setTool] = useState("brush");
-  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+
+ const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+const [isPortraitMobile, setIsPortraitMobile] = useState(false);
+
+
+useEffect(() => {
+  const update:any = () => {
+    const isMobile = window.innerWidth <= 768; // simple et fiable
+    const portrait = window.innerHeight > window.innerWidth; // fiable en DevTools
+    setIsPortraitMobile(isMobile && portrait);
+  };
+
+  update();
+  window.addEventListener("resize", update);
+  window.addEventListener("orientationchange", update);
+
+  return () => {
+    window.removeEventListener("resize", update);
+    window.removeEventListener("orientationchange", update);
+  };
+}, []);
+
+
 
   const [options, setOptions] = useState({
     color: "#333333",
@@ -37,22 +59,21 @@ export default function RoomPage() {
 
   // ✅ pré-join
   const [username, setUsername] = useState("");
-  const [hasJoined, setHasJoined] = useState(false);
-  const [joinRequested, setJoinRequested] = useState(false);
+  const [canJoin, setCanJoin] = useState(false);
   const [joinError, setJoinError] = useState<string | null>(null);
 
   const SIDEBAR_WIDTH = 190;
   const canvasRef = useRef<CanvasStageHandle | null>(null);
 
-  // Charger username depuis localStorage au mount
+  // load username (client only)
   useEffect(() => {
     const saved = localStorage.getItem(USERNAME_KEY) || "";
     setUsername(saved);
-    // si déjà un username => on peut demander join automatiquement
-    if (saved.trim().length >= 3) setJoinRequested(true);
+
+    // si déjà valid, autoriser join (CanvasStage fera le join)
+    if (saved.trim().length >= 3) setCanJoin(true);
   }, []);
 
-  // Handler pour lancer join (après submit form)
   const requestJoin = () => {
     const u = username.trim();
     if (u.length < 3) {
@@ -61,43 +82,35 @@ export default function RoomPage() {
     }
     localStorage.setItem(USERNAME_KEY, u);
     setJoinError(null);
-    setJoinRequested(true);
+    setCanJoin(true);
   };
 
-  // Socket effect (listeners + join quand joinRequested=true)
+  // ✅ listeners UI room (pas de join ici)
   useEffect(() => {
     if (!socket || !roomid) return;
-
-    const join = () => {
-      const u = (localStorage.getItem(USERNAME_KEY) || "").trim();
-      if (u.length < 3) return; // pas de join sans username valide
-
-      socket.emit("room:join", { roomId: roomid, username: u });
-    };
 
     const onError = (err: any) => {
       console.log("room:error", err);
 
-      // Si erreur = room invalid/not found => retour join page
       if (err?.code === "ROOM_NOT_FOUND" || err?.code === "BAD_ROOM_ID") {
         router.replace("/join");
         return;
       }
 
-      // Sinon afficher dans UI
-      setJoinError(err?.code || "Erreur de connexion à la room");
-      setJoinRequested(false);
-      setHasJoined(false);
+      // erreur join => revenir au form
+      setJoinError(err?.code || "Erreur");
+      setCanJoin(false);
     };
 
     const onState = (data: any) => {
+      // UI seulement (pas shapes ici)
       setRoomName(data.roomName ?? "");
       setUsers(Array.isArray(data.users) ? data.users : []);
       setIsPublic(Boolean(data.isPublic));
       setOwnerId(data.ownerId ?? null);
 
-      setHasJoined(true);
-      setJoinError(null);
+      // si tu veux fermer form même si canJoin est true
+      // (en pratique, CanvasStage join, puis tu reçois room:state)
     };
 
     const onUsers = (data: { roomId: string; users: RoomUser[] }) => {
@@ -115,34 +128,29 @@ export default function RoomPage() {
     socket.on("room:users", onUsers);
     socket.on("room:visibility", onVisibility);
 
-    // ✅ Join seulement si demandé
-    if (joinRequested) {
-      if (socket.connected) join();
-      else socket.once("connect", join);
-    }
-
     return () => {
       socket.off("room:error", onError);
       socket.off("room:state", onState);
       socket.off("room:users", onUsers);
       socket.off("room:visibility", onVisibility);
-      socket.off("connect", join);
     };
-  }, [socket, roomid, router, joinRequested]);
+  }, [socket, roomid, router]);
 
-  // ✅ UI pré-join
-  if (!hasJoined) {
+  // ✅ afficher form tant que canJoin=false
+  if (!canJoin) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[#555] p-4">
         <div className="w-full max-w-md rounded-2xl bg-white p-5 shadow-xl">
-          <div className="font-semibold text-lg">Join the room {roomName}
+          <div className="font-semibold text-lg">
+            Join the room
             {roomid && (
-            <div className="mb-2 text-xs text-gray-500">
-              Room ID: <span className="font-mono">{roomid}</span>
-            </div>
-          )}
+              <div className="mt-1 text-xs text-gray-500">
+                Room ID: <span className="font-mono">{roomid}</span>
+              </div>
+            )}
           </div>
-          <div className="text-sm text-gray-500 mt-1">
+
+          <div className="text-sm text-gray-500 mt-2">
             Enter your username to continue.
           </div>
 
@@ -150,7 +158,7 @@ export default function RoomPage() {
             value={username}
             onChange={(e) => setUsername(e.target.value)}
             className="mt-4 w-full rounded-xl border px-4 py-2"
-            placeholder="Your username (minimum 3 characters)"
+            placeholder="Your username (min 3 chars)"
             onKeyDown={(e) => {
               if (e.key === "Enter") requestJoin();
             }}
@@ -164,17 +172,24 @@ export default function RoomPage() {
           >
             Join
           </button>
-
-    
         </div>
       </div>
     );
   }
 
-  // ✅ UI normale (whiteboard)
+{isPortraitMobile && (
+  <div className="fixed inset-0 z-[9999] bg-black/85 flex items-center justify-center p-6">
+    <div className="max-w-sm text-center text-white">
+      <div className="text-xl font-semibold">Tourne ton téléphone</div>
+      <div className="mt-2 text-sm opacity-90">
+        Utilise le mode paysage pour le whiteboard.
+      </div>
+    </div>
+  </div>
+)}
+  // ✅ UI normale
   return (
     <div className="flex h-full overflow-hidden relative bg-[#555]">
-      {/* Toggle sidebar */}
       <button
         onClick={() => setIsSidebarOpen((prev) => !prev)}
         className={`absolute top-2 ${isSidebarOpen ? "left-[200px]" : "left-2"} z-50 text-block px-3 py-1 rounded-lg text-lg`}
@@ -182,7 +197,6 @@ export default function RoomPage() {
         {isSidebarOpen ? <GoSidebarExpand /> : <GoSidebarCollapse />}
       </button>
 
-      {/* Sidebar */}
       {isSidebarOpen && (
         <div style={{ width: SIDEBAR_WIDTH }} className="bg-blue-100">
           <Sidebar
@@ -196,7 +210,6 @@ export default function RoomPage() {
         </div>
       )}
 
-      {/* Invite button */}
       <button
         onClick={() => setInviteOpen(true)}
         className="absolute top-4 right-4 px-6 py-2 uppercase font-bold rounded-sm bg-primary text-white z-50 !cursor-pointer"
@@ -215,12 +228,14 @@ export default function RoomPage() {
       />
 
       <CanvasStage
+        ref={canvasRef}
         tool={tool}
         options={options}
         sidebarWidth={isSidebarOpen ? SIDEBAR_WIDTH : 0}
         socket={socket}
         roomid={roomid}
-        ref={canvasRef}
+        canJoin={canJoin}
+        username={(localStorage.getItem(USERNAME_KEY) || username).trim()}
       />
 
       <ToolsHeader tool={tool} setTool={setTool} />

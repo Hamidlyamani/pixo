@@ -1,35 +1,84 @@
-import "@/app/globals.css"
-import localFont from "next/font/local";
+import "@/app/globals.css";
+import type { Metadata } from "next";
 
-import { DM_Sans } from "next/font/google";
+import { inter, montserrat, dmSans, sourGummy } from "./fonts";
 
-const dmSans = DM_Sans({
-  subsets: ["latin"],       // required
-  weight: ["400", "500", "700"], // optional, pick what you need
-  variable: "--font-dm-sans",    // optional if you use Tailwind
-  display: "swap",               // improves performance
-});
+// ✅ Metadata complet
+export const metadata: Metadata = {
+  metadataBase: new URL("https://your-domain.com"), // change ça
+  title: {
+    default: "Pixo - Draw together in real time",
+    template: "%s — Pixo",
+  },
+  description:
+    "Pixo is a real-time multi-user drawing app for creators, students, and friends. Draw together online instantly.",
+  applicationName: "Pixo",
+  authors: [{ name: "Hamido", url: "https://your-portfolio.com" }], // change ça
+  creator: "Hamido",
+  keywords: ["collaborative drawing", "whiteboard", "real-time", "canvas", "pixo"],
+  robots: { index: true, follow: true },
 
+  icons: {
+    icon: [
+      { url: "/favicon.ico" },
+      { url: "/favicon-16x16.png", sizes: "16x16", type: "image/png" },
+      { url: "/favicon-32x32.png", sizes: "32x32", type: "image/png" },
+    ],
+    apple: [{ url: "/apple-touch-icon.png", sizes: "180x180" }],
+    shortcut: ["/favicon.ico"],
+  },
 
-export const myFont = localFont({
-  src: [
-    // { path: "./../../public/font/SourGummy-Black.eot",  style: "normal" },
-    { path: "./../../public/font/SourGummy-Black.ttf",  style: "normal" },
-    { path: "./../../public/font/SourGummy-Black.woff",  style: "normal" },
-    { path: "./../../public/font/SourGummy-Black.woff2", style: "normal" },
+  // ✅ PWA / manifest (si tu l’as)
+  manifest: "/site.webmanifest",
+
+  // ✅ Couleurs UI (mobile + navigateur)
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#ffffff" },
+    { media: "(prefers-color-scheme: dark)", color: "#0b1220" },
   ],
-  variable: "--SourGummy",
-   // optional, for Tailwind usage
-});
 
-export const metadata = {
-  title: "Pexo - let's drow ...",
+  // ✅ Open Graph (partage)
+  openGraph: {
+    type: "website",
+    url: "https://your-domain.com",
+    title: "Pixo: Draw together in real time",
+    description:
+      "A real-time shared canvas for creators, students, and friends. Start a room and draw together instantly.",
+    siteName: "Pixo",
+    images: [
+      {
+        url: "/og.png",
+        width: 1200,
+        height: 630,
+        alt: "Pixo collaborative drawing app",
+      },
+    ],
+  },
+
+  // ✅ Twitter
+  twitter: {
+    card: "summary_large_image",
+    title: "Pixo: Draw together in real time",
+    description:
+      "Real-time multi-user drawing. Start a room and collaborate instantly.",
+    images: ["/og.png"],
+  },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
-      <body className={dmSans.className}>{children}</body>
+      <body
+        className={[
+          inter.variable,
+          montserrat.variable,
+          dmSans.variable,
+          sourGummy.variable,
+          "min-h-screen antialiased",
+        ].join(" ")}
+      >
+        {children}
+      </body>
     </html>
   );
 }

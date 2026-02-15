@@ -16,8 +16,7 @@ io.on("connection", (socket) => {
 
 
 socket.onAnyOutgoing((event, ...args) => {
-  console.log("📤 Event envoyé:", event);
-  console.log("📦 Data:", args);
+  console.log("Event envoyé:", event,args);
 });
   registerEvents(io, socket);
 });

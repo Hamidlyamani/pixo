@@ -9,7 +9,7 @@ type LiquidGlassProProps = {
 };
 
 const roundedMap = {
-  "2xl": "rounded-2xl",
+  "2xl": "rounded-md ",
   "3xl": "rounded-3xl",
   "4xl": "rounded-[2.5rem]",
 } as const;
@@ -44,8 +44,8 @@ const strengthMap = {
 export function LiquidGlassPro({
   children,
   className = "",
-  rounded = "4xl",
-  strength = "strong",
+  rounded = "2xl",
+  strength = "medium",
 }: LiquidGlassProProps) {
   const s = strengthMap[strength];
 
@@ -129,9 +129,8 @@ export function LiquidGlassPro({
         {/* Double inner border (gives premium edge) */}
         <div
           className={[
-            "pointer-events-none absolute inset-[10px] border",
+            "pointer-events-none absolute inset-[10px] ",
             roundedMap[rounded],
-            "border-white/15",
             "shadow-[inset_0_1px_0_rgba(255,255,255,0.25)]",
           ].join(" ")}
         />
@@ -146,7 +145,7 @@ export function LiquidGlassPro({
         />
 
         {/* Content */}
-        <div className="relative z-10 p-7 md:p-10">{children}</div>
+        <div className="relative z-10 p-4 md:p-7">{children}</div>
       </div>
 
       {/* keyframes */}

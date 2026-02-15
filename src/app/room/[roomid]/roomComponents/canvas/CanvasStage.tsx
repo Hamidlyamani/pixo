@@ -23,6 +23,8 @@ type CanvasStageProps = {
   sidebarWidth: number;
   socket: any;
   roomid: string;
+  canJoin: boolean;     // ✅ NEW
+  username: string;     // ✅ NEW
 };
 
 export type CanvasStageHandle = {
@@ -33,7 +35,7 @@ const CANVAS_WIDTH = 1000;
 const CANVAS_HEIGHT = 600;
 
 const CanvasStage = forwardRef<CanvasStageHandle, CanvasStageProps>(function CanvasStage(
-  { tool, options, sidebarWidth, socket }: CanvasStageProps,
+  { tool, options, sidebarWidth, socket, roomid, canJoin, username }: CanvasStageProps,
   ref
 ) {
   const stageRef = useRef<any>(null);
@@ -44,27 +46,42 @@ const CanvasStage = forwardRef<CanvasStageHandle, CanvasStageProps>(function Can
   const fallbackAuthorIdRef = useRef(nanoid());
   const authorId = socket?.id ?? fallbackAuthorIdRef.current;
 
-
-  /* ---------------------------------------------
-     Shapes store
-  --------------------------------------------- */
   const shapesApi = useShapes(authorId);
-  const {
-    shapes,
-    addShape,
-    updateShape,       // payload only
-    updateTransform,   // transform only
-    endShape,
-    setAllShapes,
-  } = shapesApi;
+  const { shapes, addShape, updateShape, updateTransform, endShape, setAllShapes } = shapesApi;
 
-  /* ---------------------------------------------
-     Socket sync
-  --------------------------------------------- */
   const syncRef = useRef<ReturnType<typeof initShapeSync> | null>(null);
 
+
+
+  const [boardScale, setBoardScale] = useState(1);
+const [boardPos, setBoardPos] = useState({ x: 0, y: 0 });
+
+useEffect(() => {
+  const updateBoardFit = () => {
+    const availableWidth = stageSize.width;
+    const availableHeight = stageSize.height;
+
+    // fit (garde le ratio)
+    const sx = availableWidth / CANVAS_WIDTH;
+    const sy = availableHeight / (CANVAS_HEIGHT + 40);
+    const s = Math.min(sx, sy); // pas de limite, tu peux mettre Math.min(sx, sy, 1) si tu veux pas agrandir
+
+    setBoardScale(s);
+
+    // center
+    const x = (availableWidth - CANVAS_WIDTH * s) / 2;
+    const y = (availableHeight - CANVAS_HEIGHT * s) / 2;
+    setBoardPos({ x, y });
+  };
+
+  updateBoardFit();
+}, [stageSize.width, stageSize.height]);
+
+
+  // ✅ 1) attach listeners first
   useEffect(() => {
     if (!socket) return;
+
     const sync = initShapeSync({
       socket,
       authorId,
@@ -83,27 +100,47 @@ const CanvasStage = forwardRef<CanvasStageHandle, CanvasStageProps>(function Can
     };
   }, [socket, authorId, addShape, updateShape, endShape, setAllShapes, updateTransform]);
 
-  /* ---------------------------------------------
-     Networked API used by toolHandlers
-  --------------------------------------------- */
+  // ✅ 2) join only after listeners attached + canJoin
+  const joinedRef = useRef(false);
+
+  useEffect(() => {
+    if (!socket || !roomid) return;
+    if (!canJoin) return;
+    if (!username || username.trim().length < 3) return;
+
+    // important: avoid multiple joins
+    if (joinedRef.current) return;
+
+    const doJoin = () => {
+      if (joinedRef.current) return;
+      joinedRef.current = true;
+
+      socket.emit("room:join", { roomId: roomid, username: username.trim() });
+    };
+
+    // if not connected yet
+    if (socket.connected) doJoin();
+    else socket.once("connect", doJoin);
+
+    return () => {
+      socket.off("connect", doJoin);
+    };
+  }, [socket, roomid, canJoin, username]);
+
   const networkedShapesApi = useMemo(
     () => ({
       addShape: (shape: Shape) => {
-       
         addShape(shape);
         syncRef.current?.emitStart(shape);
       },
-
       updateShape: (id: string, payload: any, status?: Shape["status"]) => {
         updateShape(id, payload, status);
         syncRef.current?.emitUpdate(id, payload, status);
       },
-
       updateTransform: (id: string, t: TransformType, status?: Shape["status"]) => {
         updateTransform(id, t, status);
         syncRef.current?.emitTransform?.(id, t, status);
       },
-
       endShape: (id: string) => {
         endShape(id);
         syncRef.current?.emitEnd(id);
@@ -112,9 +149,6 @@ const CanvasStage = forwardRef<CanvasStageHandle, CanvasStageProps>(function Can
     [addShape, updateShape, updateTransform, endShape]
   );
 
-  /* ---------------------------------------------
-     Tool handlers
-  --------------------------------------------- */
   const activeShapeId = useRef<string | null>(null);
   const startPosRef = { current: { x: 0, y: 0 } };
   const brushPointsRef = { current: [] as number[] };
@@ -123,6 +157,22 @@ const CanvasStage = forwardRef<CanvasStageHandle, CanvasStageProps>(function Can
   useEffect(() => {
     optionsRef.current = options;
   }, [options]);
+  // ----------------------- solve x,y probleme en scale
+// const tr = group.getAbsoluteTransform().copy();
+// tr.invert();
+// const localPos = tr.point(pos);
+const getBoardPointer = () => {
+  const stage = stageRef.current;
+  const group = canvasGroupRef.current;
+  if (!stage || !group) return null;
+
+  const p = stage.getPointerPosition();
+  if (!p) return null;
+
+  const tr = group.getAbsoluteTransform().copy();
+  tr.invert();
+  return tr.point(p); // ✅ coordonnées locales 1000×600
+};
 
   const toolHandlersRef = useRef<Record<string, ToolHandlers> | null>(null);
   if (!toolHandlersRef.current) {
@@ -139,15 +189,11 @@ const CanvasStage = forwardRef<CanvasStageHandle, CanvasStageProps>(function Can
   }
   const toolHandlers = toolHandlersRef.current!;
 
-  /* ---------------------------------------------
-     Export JPG (white board only)
-  --------------------------------------------- */
   const exportBoardJpg = () => {
     const stage = stageRef.current;
     const group = canvasGroupRef.current;
     if (!stage || !group) return;
 
-    // position du tableau blanc dans le stage (après pan)
     const rect = group.getClientRect({ relativeTo: stage });
 
     const dataUrl = stage.toDataURL({
@@ -166,30 +212,19 @@ const CanvasStage = forwardRef<CanvasStageHandle, CanvasStageProps>(function Can
     link.click();
   };
 
-  // ✅ expose exportJpg au parent
-  useImperativeHandle(ref, () => ({
-    exportJpg: exportBoardJpg,
-  }));
+  useImperativeHandle(ref, () => ({ exportJpg: exportBoardJpg }));
 
-  /* ---------------------------------------------
-     Mouse handlers
-  --------------------------------------------- */
   const handleMouseDown = (e: any) => {
-    const pos = stageRef.current?.getPointerPosition();
-    if (!pos) return;
-
-    // si tu as un outil "hand", il doit pouvoir pan même hors canvas
+     const pos = getBoardPointer();
+  if (!pos) return;
     if (tool !== "hand" && !isInsideCanvas(pos)) return;
-
     toolHandlers[tool]?.onDown?.({ pos, target: e.target });
   };
 
   const handleMouseMove = () => {
-    const pos = stageRef.current?.getPointerPosition();
-    if (!pos) return;
-
+    const pos = getBoardPointer();
+  if (!pos) return;
     if (tool !== "hand" && !isInsideCanvas(pos)) return;
-
     toolHandlers[tool]?.onMove?.({ pos });
   };
 
@@ -197,9 +232,6 @@ const CanvasStage = forwardRef<CanvasStageHandle, CanvasStageProps>(function Can
     toolHandlers[tool]?.onUp?.();
   };
 
-  /* ---------------------------------------------
-     Resize logic
-  --------------------------------------------- */
   useEffect(() => {
     const resize = () => {
       setStageSize({
@@ -207,48 +239,22 @@ const CanvasStage = forwardRef<CanvasStageHandle, CanvasStageProps>(function Can
         height: window.innerHeight,
       });
     };
-
     resize();
     window.addEventListener("resize", resize);
     return () => window.removeEventListener("resize", resize);
   }, [sidebarWidth]);
 
-  /* ---------------------------------------------
-     Bounds check
-  --------------------------------------------- */
-  function isInsideCanvas(pos: { x: number; y: number }) {
-    const group = canvasGroupRef.current;
-    if (!group) return false;
-
-    const tr = group.getAbsoluteTransform().copy();
-    tr.invert();
-    const localPos = tr.point(pos);
-
-    return (
-      localPos.x >= 0 &&
-      localPos.y >= 0 &&
-      localPos.x <= CANVAS_WIDTH &&
-      localPos.y <= CANVAS_HEIGHT
-    );
-  }
+  function isInsideCanvas(localPos: { x: number; y: number }) {
+  return (
+    localPos.x >= 0 &&
+    localPos.y >= 0 &&
+    localPos.x <= CANVAS_WIDTH &&
+    localPos.y <= CANVAS_HEIGHT
+  );
+}
 
   useCursor(stageRef, tool);
 
-
-//   useEffect(() => {
-//   const group = canvasGroupRef.current;
-//   if (!group) return;
-
-//   const x = (stageSize.width - CANVAS_WIDTH) / 2;
-//   const y = (stageSize.height - CANVAS_HEIGHT) / 2;
-
-//   group.position({ x, y });
-//   group.getLayer()?.batchDraw();
-// }, [stageSize.width, stageSize.height]);
-
-  /* ---------------------------------------------
-     Render
-  --------------------------------------------- */
   return (
     <Stage
       ref={stageRef}
@@ -260,14 +266,16 @@ const CanvasStage = forwardRef<CanvasStageHandle, CanvasStageProps>(function Can
       style={{ background: "#555" }}
     >
       <Layer>
-        <Group ref={canvasGroupRef}>
+       <Group
+  ref={canvasGroupRef}
+  x={boardPos.x}
+  y={boardPos.y}
+  scaleX={boardScale}
+  scaleY={boardScale}
+>
           <Rect width={CANVAS_WIDTH} height={CANVAS_HEIGHT} fill="white" listening={false} />
           <Transformer ref={trRef} />
-          <RenderLayer
-            shapes={shapes}
-            updateShape={networkedShapesApi.updateShape}
-            updateTransform={networkedShapesApi.updateTransform}
-          />
+          <RenderLayer shapes={shapes} updateShape={networkedShapesApi.updateShape} updateTransform={networkedShapesApi.updateTransform} />
         </Group>
       </Layer>
     </Stage>

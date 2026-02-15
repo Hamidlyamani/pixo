@@ -64,7 +64,6 @@ export function initShapeSync({
     endShape(data.id);
   });
 
-  // ✅ NEW EVENT NAME
   socket.on("room:state", (data: { shapes: Shape[] }) => {
     setAllShapes(data.shapes || []);
   });
