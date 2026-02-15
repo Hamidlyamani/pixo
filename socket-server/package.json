@@ -1,0 +1,14 @@
+{
+  "name": "pixo-socket-server",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "node --loader ts-node/esm index.ts"
+  },
+  "dependencies": {
+    "socket.io": "^4.8.3",
+    "nanoid": "^5.1.6",
+    "ts-node": "^10.9.2",
+    "typescript": "^5"
+  }
+}
