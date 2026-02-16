@@ -1,8 +1,15 @@
 import "@/app/globals.css";
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 
 import { inter, montserrat, dmSans, sourGummy } from "./fonts";
 
+
+export const viewport: Viewport = {
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#ffffff" },
+    { media: "(prefers-color-scheme: dark)", color: "#0b1220" },
+  ],
+};
 // ✅ Metadata complet
 export const metadata: Metadata = {
   metadataBase: new URL("https://your-domain.com"), // change ça
@@ -30,12 +37,6 @@ export const metadata: Metadata = {
 
   // ✅ PWA / manifest (si tu l’as)
   manifest: "/site.webmanifest",
-
-  // ✅ Couleurs UI (mobile + navigateur)
-  themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#ffffff" },
-    { media: "(prefers-color-scheme: dark)", color: "#0b1220" },
-  ],
 
   // ✅ Open Graph (partage)
   openGraph: {
