@@ -12,7 +12,7 @@ export default function PixoInfos() {
   return (
     <>
       <div onClick={() => setOpen(!open)} className="flex gap-1 absolute right-4 bottom-2  w-fit items-end justify-center p-4 cursor-pointer " title="About us" >
-        <div><Image src={logo} alt="pixo " className="w-[50px] " /></div>
+        <div><Image src={logo} alt="pixo " className="w-[50px]" width={50} /></div>
         <div><h2 className={`text-primary text-h2-2 font-black ${sourGummy.className} `} >Pixo</h2></div>
       </div>
       {open && (
