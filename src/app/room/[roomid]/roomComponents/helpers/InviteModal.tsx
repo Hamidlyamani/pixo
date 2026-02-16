@@ -1,17 +1,27 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import type { Socket } from "socket.io-client";
 
 type InviteModalProps = {
   open: boolean;
   onClose: () => void;
-  socket: any;
+  socket: Socket| null;
   roomId: string;
   ownerId: string | null;
   isPublic: boolean;
   setIsPublic: (v: boolean) => void;
 };
+ type InvitePayload = {
+  roomId: string;
+  ownerId: string | null;
+  isPublic?: boolean;
+};
 
+type RoomError = {
+  code?: string;
+  message?: string;
+};
 export default function InviteModal({
   open,
   onClose,
@@ -36,13 +46,17 @@ export default function InviteModal({
     if (!open || !socket) return;
     socket.emit("room:get-invite", { roomId });
 
-    const onInvite = (data: any) => {
-      if (typeof data?.isPublic === "boolean") setIsPublic(data.isPublic);
-    };
+ 
 
-    const onError = (err: any) => {
-      console.log("room:error", err);
-    };
+const onInvite = (data: InvitePayload): void => {
+  if (typeof data.isPublic === "boolean") {
+    setIsPublic(data.isPublic);
+  }
+};
+
+const onError = (err: RoomError): void => {
+  console.log("room:error", err);
+};
 
     socket.on("room:invite", onInvite);
     socket.on("room:error", onError);
@@ -74,7 +88,7 @@ export default function InviteModal({
     socket.emit("room:set-public", { roomId, isPublic: next });
 
     // On attend room:visibility pour confirmer (meilleur)
-    const onVis = (data: any) => {
+    const onVis = (data: InvitePayload) => {
       if (data?.roomId === roomId) {
         setIsPublic(Boolean(data.isPublic));
         setLoadingVis(false);
@@ -82,7 +96,7 @@ export default function InviteModal({
       }
     };
 
-    const onError = (err: any) => {
+    const onError = (err: RoomError) => {
       console.log("room:error", err);
       setLoadingVis(false);
       socket.off("room:error", onError);

@@ -11,8 +11,22 @@ import {
 } from "react-icons/fa";import { IoIosBrush } from "react-icons/io";
 import { TOOLS } from "./helpers/tools";
 
-export default function ToolsHeader({ tool, setTool }: any) {
-  const Button = ({ value, icon }: any) => (
+
+
+
+type ToolsHeaderProps = {
+  tool: string;
+  setTool: React.Dispatch<React.SetStateAction<string>>;
+};
+
+type ButtonProps = {
+  value: string;
+  icon: React.ReactNode;
+};
+
+
+export default function ToolsHeader({ tool, setTool }: ToolsHeaderProps) {
+  const Button = ({ value, icon }: ButtonProps) => (
     <button
       onClick={() => setTool(value)}
       style={{

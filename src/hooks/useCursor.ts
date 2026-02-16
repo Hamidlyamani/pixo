@@ -1,8 +1,9 @@
 import { TOOLS } from "@/app/room/[roomid]/roomComponents/helpers/tools";
 import { useEffect } from "react";
+import type Konva from "konva";
 
 
-export default function useCursor(stageRef: any, tool: string) {
+export default function useCursor(stageRef: React.MutableRefObject<Konva.Stage | null>, tool: string) {
   useEffect(() => {
     const stage = stageRef.current;
     if (!stage) return;

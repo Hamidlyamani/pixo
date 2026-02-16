@@ -2,7 +2,6 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { nanoid } from "nanoid";
 import { SiGoogleclassroom } from "react-icons/si";
 import { getSocket } from "@/lib/socket";
 import { montserrat } from "@/app/fonts";
@@ -66,9 +65,6 @@ const saveUsername = (name: string) => {
   localStorage.setItem(USERNAME_KEY, name);
 };
 
-const loadUsername = () => {
-  return localStorage.getItem(USERNAME_KEY) || "";
-};
 
 const createRoom = () => {
   if (!canStart) return;
@@ -92,7 +88,7 @@ const createRoom = () => {
     router.push(`/room/${roomId}`);
   };
 
-  const onError = (err: any) => {
+  const onError = (err: string) => {
     cleanup();
     console.log("room:error", err);
   };
@@ -120,12 +116,12 @@ const joinPublicRoom = (roomId: string) => {
     username,
   });
 
-  const onState = (state: any) => {
+  const onState = () => {
     cleanup();
     router.push(`/room/${roomId}`);
   };
 
-  const onError = (err: any) => {
+  const onError = (err: string) => {
     cleanup();
     console.log("room:error", err);
   };

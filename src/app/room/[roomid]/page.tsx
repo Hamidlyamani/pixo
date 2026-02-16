@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import CanvasStage, { CanvasStageHandle } from "./roomComponents/canvas/CanvasStage";
-import { BRUSH_TYPES, RoomUser } from "../../../../types";
+import {  RoomUser, ToolOptions } from "../../../../types";
 import ToolsHeader from "./roomComponents/ToolsHeader";
 import Sidebar from "./roomComponents/Sidebar";
 import { GoSidebarCollapse, GoSidebarExpand } from "react-icons/go";
@@ -19,43 +19,42 @@ export default function RoomPage() {
 
   const [tool, setTool] = useState("brush");
 
- const [isSidebarOpen, setIsSidebarOpen] = useState(true);
-const [isPortraitMobile, setIsPortraitMobile] = useState(false);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [isPortraitMobile, setIsPortraitMobile] = useState(false);
 
 
-useEffect(() => {
-  const update:any = () => {
-    const isMobile = window.innerWidth <= 768; // simple et fiable
-    const portrait = window.innerHeight > window.innerWidth; // fiable en DevTools
-    setIsPortraitMobile(isMobile && portrait);
-  };
+  useEffect(() => {
+    const update = (): void => {
+      const isMobile = window.innerWidth <= 768; // simple et fiable
+      const portrait = window.innerHeight > window.innerWidth; // fiable en DevTools
+      setIsPortraitMobile(isMobile && portrait);
+    };
 
-  update();
-  window.addEventListener("resize", update);
-  window.addEventListener("orientationchange", update);
+    update();
+    window.addEventListener("resize", update);
+    window.addEventListener("orientationchange", update);
 
-  return () => {
-    window.removeEventListener("resize", update);
-    window.removeEventListener("orientationchange", update);
-  };
-}, []);
+    return () => {
+      window.removeEventListener("resize", update);
+      window.removeEventListener("orientationchange", update);
+    };
+  }, []);
 
 
 
-  const [options, setOptions] = useState({
-    color: "#333333",
-    strokeWidth: 4,
-    fontSize: 24,
-    fontFamily: "Arial",
-    fill: "#0000ff",
-    brushCategory: BRUSH_TYPES.GENERAL,
-  });
+const [options, setOptions] = useState<ToolOptions>({
+  color: "#000",
+  strokeWidth: 2,
+  fontSize: 18,
+  fontFamily: "Arial",
+  fill: "transparent",
+  brushCategory: "general",
+});
 
   const [inviteOpen, setInviteOpen] = useState(false);
   const [isPublic, setIsPublic] = useState(false);
   const [ownerId, setOwnerId] = useState<string | null>(null);
   const [users, setUsers] = useState<RoomUser[]>([]);
-  const [roomName, setRoomName] = useState("");
 
   // ✅ pré-join
   const [username, setUsername] = useState("");
@@ -89,28 +88,40 @@ useEffect(() => {
   useEffect(() => {
     if (!socket || !roomid) return;
 
-    const onError = (err: any) => {
+    type RoomError = {
+      code?: string;
+      message?: string;
+    }
+
+    interface RoomUser {
+      id: string;
+      name: string;
+    }
+
+    interface RoomState {
+      roomName?: string;
+      users?: RoomUser[];
+      isPublic?: boolean;
+      ownerId?: string | null;
+    }
+
+    const onError = (err: RoomError): void => {
       console.log("room:error", err);
 
-      if (err?.code === "ROOM_NOT_FOUND" || err?.code === "BAD_ROOM_ID") {
+      if (err.code === "ROOM_NOT_FOUND" || err.code === "BAD_ROOM_ID") {
         router.replace("/join");
         return;
       }
 
-      // erreur join => revenir au form
-      setJoinError(err?.code || "Erreur");
+      setJoinError(err.code ?? "Erreur");
       setCanJoin(false);
     };
 
-    const onState = (data: any) => {
+    const onState = (data: RoomState) => {
       // UI seulement (pas shapes ici)
-      setRoomName(data.roomName ?? "");
       setUsers(Array.isArray(data.users) ? data.users : []);
       setIsPublic(Boolean(data.isPublic));
       setOwnerId(data.ownerId ?? null);
-
-      // si tu veux fermer form même si canJoin est true
-      // (en pratique, CanvasStage join, puis tu reçois room:state)
     };
 
     const onUsers = (data: { roomId: string; users: RoomUser[] }) => {
@@ -164,10 +175,13 @@ useEffect(() => {
             }}
           />
 
-          {joinError && <div className="mt-2 text-sm text-red-600">{joinError}</div>}
-
+          {joinError ? (
+            <div className="mt-2 text-sm text-red-600">
+              {joinError}
+            </div>
+          ) : null}
           <button
-            onClick={requestJoin}
+            onClick={() => requestJoin()}
             className="mt-4 w-full rounded-md bg-primary py-2 text-white"
           >
             Join
@@ -177,7 +191,7 @@ useEffect(() => {
     );
   }
 
-{isPortraitMobile && (
+ return isPortraitMobile ? (
   <div className="fixed inset-0 z-[9999] bg-black/85 flex items-center justify-center p-6">
     <div className="max-w-sm text-center text-white">
       <div className="text-xl font-semibold">Tourne ton téléphone</div>
@@ -186,9 +200,7 @@ useEffect(() => {
       </div>
     </div>
   </div>
-)}
-  // ✅ UI normale
-  return (
+) :  (
     <div className="flex h-full overflow-hidden relative bg-[#555]">
       <button
         onClick={() => setIsSidebarOpen((prev) => !prev)}

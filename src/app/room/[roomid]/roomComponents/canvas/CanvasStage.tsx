@@ -9,6 +9,8 @@ import React, {
   useImperativeHandle,
 } from "react";
 import { Stage, Layer, Transformer, Group, Rect } from "react-konva";
+import type Konva from "konva";
+
 import { nanoid } from "nanoid";
 import { ToolOptions, Shape, transform as TransformType } from "../../../../../../types";
 import useCursor from "@/hooks/useCursor";
@@ -16,12 +18,13 @@ import RenderLayer from "./RenderLayer";
 import { initShapeSync } from "../socket/strokeSync";
 import { createToolHandlers, ToolHandlers } from "../drawing/toolHandlers";
 import { useShapes } from "../drawing/useShapes";
+import { Socket } from "socket.io-client";
 
 type CanvasStageProps = {
   tool: string;
   options: ToolOptions;
   sidebarWidth: number;
-  socket: any;
+  socket: Socket;
   roomid: string;
   canJoin: boolean;     // ✅ NEW
   username: string;     // ✅ NEW
@@ -38,15 +41,15 @@ const CanvasStage = forwardRef<CanvasStageHandle, CanvasStageProps>(function Can
   { tool, options, sidebarWidth, socket, roomid, canJoin, username }: CanvasStageProps,
   ref
 ) {
-  const stageRef = useRef<any>(null);
-  const canvasGroupRef = useRef<any>(null);
-  const trRef = useRef<any>(null);
+const stageRef = useRef<Konva.Stage | null>(null);
+const canvasGroupRef = useRef<Konva.Group | null>(null);
+const trRef = useRef<Konva.Transformer | null>(null);
   const [stageSize, setStageSize] = useState({ width: 0, height: 0 });
 
   const fallbackAuthorIdRef = useRef(nanoid());
   const authorId = socket?.id ?? fallbackAuthorIdRef.current;
 
-  const shapesApi = useShapes(authorId);
+  const shapesApi = useShapes();
   const { shapes, addShape, updateShape, updateTransform, endShape, setAllShapes } = shapesApi;
 
   const syncRef = useRef<ReturnType<typeof initShapeSync> | null>(null);
@@ -133,7 +136,8 @@ useEffect(() => {
         addShape(shape);
         syncRef.current?.emitStart(shape);
       },
-      updateShape: (id: string, payload: any, status?: Shape["status"]) => {
+      
+      updateShape: (id: string, payload: Shape["payload"], status?: Shape["status"]) => {
         updateShape(id, payload, status);
         syncRef.current?.emitUpdate(id, payload, status);
       },
@@ -214,7 +218,7 @@ const getBoardPointer = () => {
 
   useImperativeHandle(ref, () => ({ exportJpg: exportBoardJpg }));
 
-  const handleMouseDown = (e: any) => {
+  const handleMouseDown = ( e: Konva.KonvaEventObject<MouseEvent>) => {
      const pos = getBoardPointer();
   if (!pos) return;
     if (tool !== "hand" && !isInsideCanvas(pos)) return;

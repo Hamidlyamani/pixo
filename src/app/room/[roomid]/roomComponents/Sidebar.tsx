@@ -1,20 +1,27 @@
 "use client";
 
-import { RoomUser } from "../../../../../types";
+import { RoomUser, ToolOptions } from "../../../../../types";
 import BrushCategorySelector from "./helpers/BrushCategorySelector";
 import { LuCrown } from "react-icons/lu";
 type SidebarProps = {
-  options: any;
-  setOptions: any;
-  onExportJpg: any;
+  options: ToolOptions;
+  setOptions: React.Dispatch<React.SetStateAction<ToolOptions>>;
+  onExportJpg:() => void;
   users: RoomUser[];
   mySocketId?: string;
   ownerId: string | null;
 }
 
 export default function Sidebar({ options, setOptions, onExportJpg, users, mySocketId, ownerId }: SidebarProps) {
-  const update = (key: string, value: any) =>
-    setOptions({ ...options, [key]: value });
+ const update = <K extends keyof ToolOptions>(
+  key: K,
+  value: ToolOptions[K]
+): void => {
+  setOptions((prev) => ({
+    ...prev,
+    [key]: value,
+  }));
+};
   const classIpute = "flex items-center justify-center pl-1 w-[30px]"
   return (<>
     <div className="">

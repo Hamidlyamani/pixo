@@ -3,7 +3,7 @@
 import { useCallback, useRef, useState } from "react";
 import { Shape } from "../../../../../../types";
 
-export function useShapes(authorId: string) {
+export function useShapes() {
   const [shapes, setShapes] = useState<Shape[]>([]);
 
   // Active shape drawn by THIS user
@@ -27,16 +27,16 @@ const updateShape = useCallback(
     payload: Extract<Shape, { tool: T }>["payload"],
     status: Shape["status"] = "drawing"
   ) => {
-    setShapes((prev) =>
-      prev.map((s) =>
-        s.id === id
-          ? {
-              ...s,
-              payload: payload as any, // safe by design
-              status,
-            }
-          : s
-      )
+    setShapes((prev: Shape[]) =>
+      prev.map((s) => {
+        if (s.id !== id) return s;
+
+        return {
+          ...s,
+          payload,
+          status,
+        } as Shape;
+      })
     );
   },
   []

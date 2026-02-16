@@ -1,14 +1,15 @@
 "use client";
 
-import { Layer, Line, Rect, Ellipse, Text, Group } from "react-konva";
-import type Konva from "konva";
+import { Line, Rect, Ellipse, Text, Group } from "react-konva";
 import { Shape, transform as Transform } from "../../../../../../types";
 import { getBrushLineProps } from "../helpers/Brushhelpers";
+import Konva from "konva";  
+import { editTextNode } from "../helpers/textEditor";
 
 interface RenderLayerProps {
   shapes: Shape[];
   // updateShape sert UNIQUEMENT à changer le payload (géométrie/texte)
-  updateShape: (id: string, payloadPatch: any, status?: "drawing" | "done") => void;
+  updateShape: (id: string, payloadPatch: Shape["payload"], status?: "drawing" | "done") => void;
   // updateTransform sert UNIQUEMENT à changer transform (offset/rot/scale)
   updateTransform: (id: string, t: Transform, status?: "drawing" | "done") => void;
 }
@@ -40,7 +41,7 @@ export default function RenderLayer({ shapes, updateShape, updateTransform }: Re
                 points={points}
                 x={t.x ?? 0}
                 y={t.y ?? 0}
-                draggable= {false}
+                draggable={false}
                 {...brushProps}
                 onDragEnd={(e) => {
                   const node = e.target as Konva.Line;
@@ -63,9 +64,9 @@ export default function RenderLayer({ shapes, updateShape, updateTransform }: Re
                 opacity={style?.opacity ?? 1}
                 lineCap="round"
                 lineJoin="round"
-                draggable= {false}
+                draggable={false}
                 globalCompositeOperation="source-over"
-              
+
               />
             );
           }
@@ -241,13 +242,14 @@ export default function RenderLayer({ shapes, updateShape, updateTransform }: Re
                   node.scaleX(1);
                   node.scaleY(1);
                 }}
-                onDblClick={(e) => {
-                  const node = e.target as Konva.Text;
+                onDblClick={(e: Konva.KonvaEventObject<MouseEvent>) => {
+                  const node = e.target;
+                  if (!(node instanceof Konva.Text)) return;
+
                   const stage = node.getStage();
                   if (!stage) return;
 
                   editTextNode(node, stage, (value) => {
-                    // Ici: changement de contenu => payload
                     updateShape(shape.id, { ...shape.payload, text: value }, "done");
                   });
                 }}
@@ -261,51 +263,4 @@ export default function RenderLayer({ shapes, updateShape, updateTransform }: Re
       })}
     </Group>
   );
-}
-
-function editTextNode(textNode: any, stage: any, onCommit: (value: string) => void) {
-  const textPosition = textNode.absolutePosition();
-  const stageBox = stage.container().getBoundingClientRect();
-
-  const textarea = document.createElement("textarea");
-  document.body.appendChild(textarea);
-
-  textarea.value = textNode.text();
-  textarea.style.position = "absolute";
-  textarea.style.top = stageBox.top + textPosition.y + "px";
-  textarea.style.left = stageBox.left + textPosition.x + "px";
-  textarea.style.width = textNode.width() + "px";
-  textarea.style.fontSize = textNode.fontSize() + "px";
-  textarea.style.fontFamily = textNode.fontFamily();
-  textarea.style.color = textNode.fill();
-  textarea.style.border = "1px solid #eee";
-  textarea.style.padding = "4px";
-  textarea.style.outline = "none";
-  textarea.style.resize = "none";
-  textarea.style.background = "white";
-  textarea.style.zIndex = "1000";
-
-  textarea.focus();
-  textNode.visible(false);
-  textNode.getLayer().draw();
-
-  const finish = () => {
-    const v = textarea.value;
-    textarea.remove();
-    textNode.visible(true);
-    textNode.getLayer().draw();
-    onCommit(v);
-  };
-
-  textarea.addEventListener("blur", finish);
-  textarea.addEventListener("keydown", (e) => {
-    if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault();
-      textarea.blur();
-    }
-    if (e.key === "Escape") {
-      textarea.value = textNode.text();
-      textarea.blur();
-    }
-  });
 }

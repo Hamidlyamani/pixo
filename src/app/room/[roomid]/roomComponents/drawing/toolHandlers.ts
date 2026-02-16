@@ -8,7 +8,7 @@ import Konva from "konva";
 
 export type ToolEvent = {
   pos: { x: number; y: number };
-  target?: any
+  target?: Konva.Node
 };
 
 export type ToolHandlers = {
@@ -17,7 +17,7 @@ export type ToolHandlers = {
   onUp?: () => void;
 };
 
-type ShapesApi = {
+export type ShapesApi = {
   addShape: (shape: Shape) => void;
   updateShape: (
     id: string,
@@ -38,7 +38,7 @@ export function createToolHandlers(
   activeShapeIdRef: React.MutableRefObject<string | null>,
   startPosRef: React.MutableRefObject<{ x: number; y: number }>,
   brushPointsRef: React.MutableRefObject<number[]>,
-  trRef: any,
+  trRef: React.MutableRefObject<Konva.Transformer | null>,
   canvasGroupRef: React.MutableRefObject<Konva.Group | null>
 
 ): Record<string, ToolHandlers> {
@@ -258,11 +258,11 @@ export function createToolHandlers(
 
         // si clic sur le stage (vide) => déselection
         if (target.getClassName?.() === "Stage") {
-          trRef.current.nodes([]);
+          trRef.current?.nodes([]);
           return;
         }
 
-        trRef.current.nodes([target]);
+        trRef.current?.nodes([target]);
       },
     },
     hand: {

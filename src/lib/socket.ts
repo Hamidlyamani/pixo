@@ -9,7 +9,6 @@ function getSocketUrl() {
 }
 
 export function getSocket() {
-  // Important: éviter SSR
   if (typeof window === "undefined") {
     throw new Error("getSocket() must be called in the browser (client-side).");
   }
@@ -20,7 +19,7 @@ export function getSocket() {
     });
 
     socket.on("connect", () => console.log("[client] connected:", socket?.id));
-    socket.on("disconnect", (reason: any) =>
+    socket.on("disconnect", (reason: string)  =>
       console.log("[client] disconnected:", reason)
     );
   }
