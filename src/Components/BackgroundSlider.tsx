@@ -31,7 +31,7 @@ export default function BackgroundSlider({
       {images.map((img, i) => (
         <div
           key={img}
-          className="absolute inset-0 bg-cover bg-center transition-opacity duration-1000"
+          className="absolute inset-0 bg-cover bg-no-repeat !bg-center transition-opacity duration-1000"
           style={{
             backgroundImage: `url(${img})`,
             opacity: i === index ? 1 : 0,
@@ -39,7 +39,7 @@ export default function BackgroundSlider({
         />
       ))}
 
-      <div className="relative z-10 flex h-full w-full items-center justify-center">
+      <div className="relative z-10 flex h-full min-h-screen w-full w-full items-center justify-center">
         {children}
       </div>
     </div>

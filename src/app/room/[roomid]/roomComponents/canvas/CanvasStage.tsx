@@ -10,15 +10,15 @@ import React, {
 } from "react";
 import { Stage, Layer, Transformer, Group, Rect } from "react-konva";
 import type Konva from "konva";
-
 import { nanoid } from "nanoid";
+import { Socket } from "socket.io-client";
+
 import { ToolOptions, Shape, transform as TransformType } from "../../../../../../types";
 import useCursor from "@/hooks/useCursor";
 import RenderLayer from "./RenderLayer";
 import { initShapeSync } from "../socket/strokeSync";
 import { createToolHandlers, ToolHandlers } from "../drawing/toolHandlers";
 import { useShapes } from "../drawing/useShapes";
-import { Socket } from "socket.io-client";
 
 type CanvasStageProps = {
   tool: string;
@@ -26,8 +26,8 @@ type CanvasStageProps = {
   sidebarWidth: number;
   socket: Socket;
   roomid: string;
-  canJoin: boolean;     // ✅ NEW
-  username: string;     // ✅ NEW
+  canJoin: boolean;
+  username: string;
 };
 
 export type CanvasStageHandle = {
@@ -38,50 +38,62 @@ const CANVAS_WIDTH = 1000;
 const CANVAS_HEIGHT = 600;
 
 const CanvasStage = forwardRef<CanvasStageHandle, CanvasStageProps>(function CanvasStage(
-  { tool, options, sidebarWidth, socket, roomid, canJoin, username }: CanvasStageProps,
+  { tool, options, sidebarWidth, socket, roomid, canJoin, username },
   ref
 ) {
-const stageRef = useRef<Konva.Stage | null>(null);
-const canvasGroupRef = useRef<Konva.Group | null>(null);
-const trRef = useRef<Konva.Transformer | null>(null);
+  const stageRef = useRef<Konva.Stage | null>(null);
+  const canvasGroupRef = useRef<Konva.Group | null>(null);
+  const trRef = useRef<Konva.Transformer | null>(null);
+
   const [stageSize, setStageSize] = useState({ width: 0, height: 0 });
 
+  // authorId stable
   const fallbackAuthorIdRef = useRef(nanoid());
   const authorId = socket?.id ?? fallbackAuthorIdRef.current;
 
+  /* -----------------------------
+     Shapes store
+  ------------------------------ */
   const shapesApi = useShapes();
   const { shapes, addShape, updateShape, updateTransform, endShape, setAllShapes } = shapesApi;
 
-  const syncRef = useRef<ReturnType<typeof initShapeSync> | null>(null);
-
-
-
+  /* -----------------------------
+     Board fit (responsive)
+  ------------------------------ */
   const [boardScale, setBoardScale] = useState(1);
-const [boardPos, setBoardPos] = useState({ x: 0, y: 0 });
+  const [boardPos, setBoardPos] = useState({ x: 0, y: 0 });
+  
+const [pixelRatio, setPixelRatio] = useState(1);
 
 useEffect(() => {
-  const updateBoardFit = () => {
-    const availableWidth = stageSize.width;
-    const availableHeight = stageSize.height;
+  const pr = window.devicePixelRatio || 1;
+  // limite à 2 ou 3 pour éviter de tuer les perfs
+  setPixelRatio(Math.min(pr, 2));
+}, []);
+  useEffect(() => {
+    const updateBoardFit = () => {
+      const availableWidth = stageSize.width || window.innerWidth - sidebarWidth;
+      const availableHeight = stageSize.height || window.innerHeight;
 
-    // fit (garde le ratio)
-    const sx = availableWidth / CANVAS_WIDTH;
-    const sy = availableHeight / (CANVAS_HEIGHT + 40);
-    const s = Math.min(sx, sy); // pas de limite, tu peux mettre Math.min(sx, sy, 1) si tu veux pas agrandir
+      const sx = availableWidth / CANVAS_WIDTH;
+      const sy = availableHeight / (CANVAS_HEIGHT + 40); // garde ton +40 si besoin
+      const s = Math.max(0.6, Math.min(sx, sy));
 
-    setBoardScale(s);
+      setBoardScale(s);
 
-    // center
-    const x = (availableWidth - CANVAS_WIDTH * s) / 2;
-    const y = (availableHeight - CANVAS_HEIGHT * s) / 2;
-    setBoardPos({ x, y });
-  };
+      const x = (availableWidth - CANVAS_WIDTH * s) / 2;
+      const y = (availableHeight - CANVAS_HEIGHT * s) / 2;
+      setBoardPos({ x, y });
+    };
 
-  updateBoardFit();
-}, [stageSize.width, stageSize.height]);
+    updateBoardFit();
+  }, [stageSize.width, stageSize.height, sidebarWidth]);
 
+  /* -----------------------------
+     Socket sync (listeners first)
+  ------------------------------ */
+  const syncRef = useRef<ReturnType<typeof initShapeSync> | null>(null);
 
-  // ✅ 1) attach listeners first
   useEffect(() => {
     if (!socket) return;
 
@@ -90,9 +102,9 @@ useEffect(() => {
       authorId,
       addShape,
       updateShape,
+      updateTransform,
       endShape,
       setAllShapes,
-      updateTransform,
     });
 
     syncRef.current = sync;
@@ -101,27 +113,26 @@ useEffect(() => {
       sync.destroy();
       syncRef.current = null;
     };
-  }, [socket, authorId, addShape, updateShape, endShape, setAllShapes, updateTransform]);
+  }, [socket, authorId, addShape, updateShape, updateTransform, endShape, setAllShapes]);
 
-  // ✅ 2) join only after listeners attached + canJoin
+  /* -----------------------------
+     Join room after listeners
+  ------------------------------ */
   const joinedRef = useRef(false);
 
   useEffect(() => {
     if (!socket || !roomid) return;
     if (!canJoin) return;
-    if (!username || username.trim().length < 3) return;
-
-    // important: avoid multiple joins
+    const u = username?.trim() ?? "";
+    if (u.length < 3) return;
     if (joinedRef.current) return;
 
     const doJoin = () => {
       if (joinedRef.current) return;
       joinedRef.current = true;
-
-      socket.emit("room:join", { roomId: roomid, username: username.trim() });
+      socket.emit("room:join", { roomId: roomid, username: u });
     };
 
-    // if not connected yet
     if (socket.connected) doJoin();
     else socket.once("connect", doJoin);
 
@@ -130,21 +141,26 @@ useEffect(() => {
     };
   }, [socket, roomid, canJoin, username]);
 
+  /* -----------------------------
+     Networked API (local + emit)
+  ------------------------------ */
   const networkedShapesApi = useMemo(
     () => ({
       addShape: (shape: Shape) => {
         addShape(shape);
         syncRef.current?.emitStart(shape);
       },
-      
+
       updateShape: (id: string, payload: Shape["payload"], status?: Shape["status"]) => {
         updateShape(id, payload, status);
         syncRef.current?.emitUpdate(id, payload, status);
       },
+
       updateTransform: (id: string, t: TransformType, status?: Shape["status"]) => {
         updateTransform(id, t, status);
         syncRef.current?.emitTransform?.(id, t, status);
       },
+
       endShape: (id: string) => {
         endShape(id);
         syncRef.current?.emitEnd(id);
@@ -153,30 +169,17 @@ useEffect(() => {
     [addShape, updateShape, updateTransform, endShape]
   );
 
+  /* -----------------------------
+     Tool handlers (stable)
+  ------------------------------ */
   const activeShapeId = useRef<string | null>(null);
-  const startPosRef = { current: { x: 0, y: 0 } };
-  const brushPointsRef = { current: [] as number[] };
+  const startPosRef = useRef({ x: 0, y: 0 });
+  const brushPointsRef = useRef<number[]>([]);
 
   const optionsRef = useRef(options);
   useEffect(() => {
     optionsRef.current = options;
   }, [options]);
-  // ----------------------- solve x,y probleme en scale
-// const tr = group.getAbsoluteTransform().copy();
-// tr.invert();
-// const localPos = tr.point(pos);
-const getBoardPointer = () => {
-  const stage = stageRef.current;
-  const group = canvasGroupRef.current;
-  if (!stage || !group) return null;
-
-  const p = stage.getPointerPosition();
-  if (!p) return null;
-
-  const tr = group.getAbsoluteTransform().copy();
-  tr.invert();
-  return tr.point(p); // ✅ coordonnées locales 1000×600
-};
 
   const toolHandlersRef = useRef<Record<string, ToolHandlers> | null>(null);
   if (!toolHandlersRef.current) {
@@ -185,14 +188,42 @@ const getBoardPointer = () => {
       optionsRef,
       authorId,
       activeShapeId,
-      startPosRef,
-      brushPointsRef,
+      { current: startPosRef.current }, // compat avec ton API
+      { current: brushPointsRef.current },
       trRef,
       canvasGroupRef
     );
   }
   const toolHandlers = toolHandlersRef.current!;
 
+  /* -----------------------------
+     Pointer position in board coords
+  ------------------------------ */
+  const getBoardPointer = () => {
+    const stage = stageRef.current;
+    const group = canvasGroupRef.current;
+    if (!stage || !group) return null;
+
+    const p = stage.getPointerPosition();
+    if (!p) return null;
+
+    const tr = group.getAbsoluteTransform().copy();
+    tr.invert();
+    return tr.point(p); // coords locales 1000x600
+  };
+
+  function isInsideCanvas(localPos: { x: number; y: number }) {
+    return (
+      localPos.x >= 0 &&
+      localPos.y >= 0 &&
+      localPos.x <= CANVAS_WIDTH &&
+      localPos.y <= CANVAS_HEIGHT
+    );
+  }
+
+  /* -----------------------------
+     Export JPG (board only)
+  ------------------------------ */
   const exportBoardJpg = () => {
     const stage = stageRef.current;
     const group = canvasGroupRef.current;
@@ -218,24 +249,49 @@ const getBoardPointer = () => {
 
   useImperativeHandle(ref, () => ({ exportJpg: exportBoardJpg }));
 
-  const handleMouseDown = ( e: Konva.KonvaEventObject<MouseEvent>) => {
-     const pos = getBoardPointer();
-  if (!pos) return;
+  /* -----------------------------
+     Pointer events (mobile + desktop)
+  ------------------------------ */
+  const activePointerId = useRef<number | null>(null);
+
+  const handlePointerDown = (e: Konva.KonvaEventObject<PointerEvent>) => {
+    e.evt?.preventDefault?.();
+
+    // ignore second finger
+    if (activePointerId.current !== null) return;
+    activePointerId.current = e.evt.pointerId;
+
+    const pos = getBoardPointer();
+    if (!pos) return;
+
     if (tool !== "hand" && !isInsideCanvas(pos)) return;
     toolHandlers[tool]?.onDown?.({ pos, target: e.target });
   };
 
-  const handleMouseMove = () => {
+  const handlePointerMove = (e: Konva.KonvaEventObject<PointerEvent>) => {
+    e.evt?.preventDefault?.();
+
+    if (activePointerId.current !== e.evt.pointerId) return;
+
     const pos = getBoardPointer();
-  if (!pos) return;
+    if (!pos) return;
+
     if (tool !== "hand" && !isInsideCanvas(pos)) return;
     toolHandlers[tool]?.onMove?.({ pos });
   };
 
-  const handleMouseUp = () => {
+  const handlePointerUp = (e: Konva.KonvaEventObject<PointerEvent>) => {
+    e.evt?.preventDefault?.();
+
+    if (activePointerId.current !== e.evt.pointerId) return;
+    activePointerId.current = null;
+
     toolHandlers[tool]?.onUp?.();
   };
 
+  /* -----------------------------
+     Resize stage
+  ------------------------------ */
   useEffect(() => {
     const resize = () => {
       setStageSize({
@@ -243,19 +299,11 @@ const getBoardPointer = () => {
         height: window.innerHeight,
       });
     };
+
     resize();
     window.addEventListener("resize", resize);
     return () => window.removeEventListener("resize", resize);
   }, [sidebarWidth]);
-
-  function isInsideCanvas(localPos: { x: number; y: number }) {
-  return (
-    localPos.x >= 0 &&
-    localPos.y >= 0 &&
-    localPos.x <= CANVAS_WIDTH &&
-    localPos.y <= CANVAS_HEIGHT
-  );
-}
 
   useCursor(stageRef, tool);
 
@@ -264,22 +312,28 @@ const getBoardPointer = () => {
       ref={stageRef}
       width={stageSize.width}
       height={stageSize.height}
-      onMouseDown={handleMouseDown}
-      onMouseMove={handleMouseMove}
-      onMouseUp={handleMouseUp}
-      style={{ background: "#555" }}
+      pixelRatio={pixelRatio}
+      onPointerDown={handlePointerDown}
+      onPointerMove={handlePointerMove}
+      onPointerUp={handlePointerUp}
+      onPointerCancel={handlePointerUp}
+      style={{ background: "#555", touchAction: "none" }} // ✅ IMPORTANT mobile
     >
       <Layer>
-       <Group
-  ref={canvasGroupRef}
-  x={boardPos.x}
-  y={boardPos.y}
-  scaleX={boardScale}
-  scaleY={boardScale}
->
+        <Group
+          ref={canvasGroupRef}
+          x={boardPos.x}
+          y={boardPos.y}
+          scaleX={boardScale}
+          scaleY={boardScale}
+        >
           <Rect width={CANVAS_WIDTH} height={CANVAS_HEIGHT} fill="white" listening={false} />
           <Transformer ref={trRef} />
-          <RenderLayer shapes={shapes} updateShape={networkedShapesApi.updateShape} updateTransform={networkedShapesApi.updateTransform} />
+          <RenderLayer
+            shapes={shapes}
+            updateShape={networkedShapesApi.updateShape}
+            updateTransform={networkedShapesApi.updateTransform}
+          />
         </Group>
       </Layer>
     </Stage>

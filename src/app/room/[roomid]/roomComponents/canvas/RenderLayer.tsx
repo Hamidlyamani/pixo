@@ -3,7 +3,7 @@
 import { Line, Rect, Ellipse, Text, Group } from "react-konva";
 import { Shape, transform as Transform } from "../../../../../../types";
 import { getBrushLineProps } from "../helpers/Brushhelpers";
-import Konva from "konva";  
+import Konva from "konva";
 import { editTextNode } from "../helpers/textEditor";
 
 interface RenderLayerProps {
@@ -23,6 +23,8 @@ const DEFAULT_T: Required<Transform> = {
 };
 
 export default function RenderLayer({ shapes, updateShape, updateTransform }: RenderLayerProps) {
+
+
   return (
     <Group>
       {shapes.map((shape) => {
@@ -62,8 +64,7 @@ export default function RenderLayer({ shapes, updateShape, updateTransform }: Re
                 stroke="#ffffff"
                 strokeWidth={style?.strokeWidth ?? 2}
                 opacity={style?.opacity ?? 1}
-                lineCap="round"
-                lineJoin="round"
+
                 draggable={false}
                 globalCompositeOperation="source-over"
 
@@ -82,7 +83,7 @@ export default function RenderLayer({ shapes, updateShape, updateTransform }: Re
                 x={t.x}
                 y={t.y}
                 rotation={t.rotation}
-                stroke={style?.color ?? "#000"}
+                stroke={style?.color ?? "#111111"}
                 strokeWidth={style?.strokeWidth ?? 2}
                 opacity={style?.opacity ?? 1}
                 lineCap="round"
@@ -127,7 +128,7 @@ export default function RenderLayer({ shapes, updateShape, updateTransform }: Re
                 rotation={t.rotation}
                 scaleX={t.scaleX}
                 scaleY={t.scaleY}
-                stroke={style?.color ?? "#000"}
+                stroke={style?.color ?? "#111111"}
                 strokeWidth={style?.strokeWidth ?? 2}
                 fill={style?.fill}
                 opacity={style?.opacity ?? 1}
@@ -173,7 +174,7 @@ export default function RenderLayer({ shapes, updateShape, updateTransform }: Re
                 rotation={t.rotation}
                 scaleX={t.scaleX}
                 scaleY={t.scaleY}
-                stroke={style?.color ?? "#000"}
+                stroke={style?.color ?? "#111111"}
                 strokeWidth={style?.strokeWidth ?? 2}
                 fill={style?.fill}
                 opacity={style?.opacity ?? 1}
@@ -207,7 +208,21 @@ export default function RenderLayer({ shapes, updateShape, updateTransform }: Re
           /* ===== TEXT ===== */
           case "text": {
             const { x, y, text } = shape.payload;
+            const lastTapRef = { id: "", t: 0 };
 
+            const isTextNode = (node: Konva.Node): node is Konva.Text =>
+              node.getClassName() === "Text";
+
+            const tryOpenEditor = (node: Konva.Node) => {
+              if (!isTextNode(node)) return;
+
+              const stage = node.getStage();
+              if (!stage) return;
+
+              editTextNode(node, stage, (value: string) => {
+                updateShape(shape.id, { ...shape.payload, text: value }, "done");
+              });
+            };
             return (
               <Text
                 key={shape.id}
@@ -218,7 +233,7 @@ export default function RenderLayer({ shapes, updateShape, updateTransform }: Re
                 scaleX={t.scaleX}
                 scaleY={t.scaleY}
                 fontSize={style?.fontSize ?? 18}
-                fill={style?.color ?? "#000"}
+                fill={style?.color ?? "#111111"}
                 opacity={style?.opacity ?? 1}
                 fontFamily={style?.fontFamily ?? "Arial"}
                 draggable
@@ -242,17 +257,29 @@ export default function RenderLayer({ shapes, updateShape, updateTransform }: Re
                   node.scaleX(1);
                   node.scaleY(1);
                 }}
-                onDblClick={(e: Konva.KonvaEventObject<MouseEvent>) => {
+                onPointerDown={(e) => {
                   const node = e.target;
-                  if (!(node instanceof Konva.Text)) return;
+                  if (node.getClassName?.() !== "Text") return;
 
-                  const stage = node.getStage();
-                  if (!stage) return;
+                  const now = Date.now();
+                  const same = lastTapRef.id === shape.id;
+                  const fast = now - lastTapRef.t < 300; // 250-350ms
 
-                  editTextNode(node, stage, (value) => {
-                    updateShape(shape.id, { ...shape.payload, text: value }, "done");
-                  });
+                  if (same && fast) {
+                    // ✅ double click/tap détecté
+                    tryOpenEditor(node);
+
+                    // reset pour éviter triple
+                    lastTapRef.id = "";
+                    lastTapRef.t = 0;
+                    return;
+                  }
+
+                  lastTapRef.id = shape.id;
+                  lastTapRef.t = now;
                 }}
+
+
               />
             );
           }
@@ -264,3 +291,5 @@ export default function RenderLayer({ shapes, updateShape, updateTransform }: Re
     </Group>
   );
 }
+
+

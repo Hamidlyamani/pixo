@@ -20,7 +20,7 @@ const fill = textNode.fill();
 if (typeof fill === "string") {
   textarea.style.color = fill;
 } else {
-  textarea.style.color = "#000";
+  textarea.style.color = "#111111";
 }
   textarea.style.border = "1px solid #eee";
   textarea.style.padding = "4px";

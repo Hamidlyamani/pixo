@@ -44,7 +44,7 @@ export type ToolOptions = {
     opacity?: number;      
     spacing?: number;      
     smoothing?: number;
-   
+ 
 };
 
 

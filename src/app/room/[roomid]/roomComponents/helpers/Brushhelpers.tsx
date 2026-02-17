@@ -6,12 +6,13 @@ export function getBrushLineProps(options?: ToolOptions) {
   const opacity = options?.opacity ?? 1;
   const smoothing = options?.smoothing ?? 0;
   const spacing = options?.spacing ?? 0;
+   
 
   const base = {
-    stroke: options?.color ?? "#000",
+    stroke: options?.color ?? "#111111",
     strokeWidth,
     opacity,
-    tension: smoothing,
+    tension: smoothing?? 0.4,
     dash: spacing ? [spacing, spacing] : undefined,
     lineJoin: "round" as const,
   };

@@ -23,31 +23,45 @@ export default function RoomPage() {
   const [isPortraitMobile, setIsPortraitMobile] = useState(false);
 
 
-  useEffect(() => {
-    const update = (): void => {
-      const isMobile = window.innerWidth <= 768; // simple et fiable
-      const portrait = window.innerHeight > window.innerWidth; // fiable en DevTools
-      setIsPortraitMobile(isMobile && portrait);
-    };
 
-    update();
-    window.addEventListener("resize", update);
-    window.addEventListener("orientationchange", update);
+useEffect(() => {
+  const update = () => {
+    const isMobile = window.innerWidth <= 768;
+    const portrait = window.innerHeight > window.innerWidth;
 
-    return () => {
-      window.removeEventListener("resize", update);
-      window.removeEventListener("orientationchange", update);
-    };
-  }, []);
+    setIsPortraitMobile(isMobile && portrait);
 
+    // ✅ sidebar hidden by default on mobile
+    if (isMobile) setIsSidebarOpen(false);
+    else setIsSidebarOpen(true);
+  };
+
+  update();
+  window.addEventListener("resize", update);
+  window.addEventListener("orientationchange", update);
+
+  return () => {
+    window.removeEventListener("resize", update);
+    window.removeEventListener("orientationchange", update);
+  };
+}, []);
+
+useEffect(() => {
+  document.documentElement.style.overflow = "hidden";
+  document.body.style.overflow = "hidden";
+  return () => {
+    document.documentElement.style.overflow = "";
+    document.body.style.overflow = "";
+  };
+}, []);
 
 
 const [options, setOptions] = useState<ToolOptions>({
-  color: "#000",
-  strokeWidth: 2,
+  color: "#111111",
+  strokeWidth: 4,
   fontSize: 18,
   fontFamily: "Arial",
-  fill: "transparent",
+  fill: "#0000ff",
   brushCategory: "general",
 });
 
@@ -194,6 +208,7 @@ const [options, setOptions] = useState<ToolOptions>({
  return isPortraitMobile ? (
   <div className="fixed inset-0 z-[9999] bg-black/85 flex items-center justify-center p-6">
     <div className="max-w-sm text-center text-white">
+      {/* <Image></Image> */}
       <div className="text-xl font-semibold">Tourne ton téléphone</div>
       <div className="mt-2 text-sm opacity-90">
         Utilise le mode paysage pour le whiteboard.
@@ -201,56 +216,65 @@ const [options, setOptions] = useState<ToolOptions>({
     </div>
   </div>
 ) :  (
-    <div className="flex h-full overflow-hidden relative bg-[#555]">
-      <button
-        onClick={() => setIsSidebarOpen((prev) => !prev)}
-        className={`absolute top-2 ${isSidebarOpen ? "left-[200px]" : "left-2"} z-50 text-block px-3 py-1 rounded-lg text-lg`}
-      >
-        {isSidebarOpen ? <GoSidebarExpand /> : <GoSidebarCollapse />}
-      </button>
+    <div className="relative flex h-screen w-screen overflow-hidden bg-[#555]">
+  {/* Toggle sidebar */}
+  <button
+    onClick={() => setIsSidebarOpen((prev) => !prev)}
+    className={`absolute top-2 ${
+      isSidebarOpen ? "left-[200px]" : "left-2"
+    } z-50 px-3 py-1 rounded-lg text-lg`}
+  >
+    {isSidebarOpen ? <GoSidebarExpand /> : <GoSidebarCollapse />}
+  </button>
 
-      {isSidebarOpen && (
-        <div style={{ width: SIDEBAR_WIDTH }} className="bg-blue-100">
-          <Sidebar
-            options={options}
-            setOptions={setOptions}
-            onExportJpg={() => canvasRef.current?.exportJpg()}
-            users={users}
-            mySocketId={socket?.id}
-            ownerId={ownerId}
-          />
-        </div>
-      )}
-
-      <button
-        onClick={() => setInviteOpen(true)}
-        className="absolute top-4 right-4 px-6 py-2 uppercase font-bold rounded-sm bg-primary text-white z-50 !cursor-pointer"
-      >
-        Invite
-      </button>
-
-      <InviteModal
-        open={inviteOpen}
-        onClose={() => setInviteOpen(false)}
-        socket={socket}
-        roomId={roomid}
-        ownerId={ownerId}
-        isPublic={isPublic}
-        setIsPublic={setIsPublic}
-      />
-
-      <CanvasStage
-        ref={canvasRef}
-        tool={tool}
+  {/* Sidebar (scroll uniquement ici) */}
+  {isSidebarOpen && (
+    <aside
+      style={{ width: SIDEBAR_WIDTH }}
+      className="h-screen overflow-y-auto bg-blue-100 border-r border-blue-200"
+    >
+      <Sidebar
         options={options}
-        sidebarWidth={isSidebarOpen ? SIDEBAR_WIDTH : 0}
-        socket={socket}
-        roomid={roomid}
-        canJoin={canJoin}
-        username={(localStorage.getItem(USERNAME_KEY) || username).trim()}
+        setOptions={setOptions}
+        onExportJpg={() => canvasRef.current?.exportJpg()}
+        users={users}
+        mySocketId={socket?.id}
+        ownerId={ownerId}
       />
+    </aside>
+  )}
 
-      <ToolsHeader tool={tool} setTool={setTool} />
-    </div>
+  {/* Canvas area */}
+  <main className="relative flex-1 h-screen overflow-hidden">
+    <button
+      onClick={() => setInviteOpen(true)}
+      className="absolute top-4 right-4 z-50 px-2 py-1 md:px-6 md:py-2 uppercase font-bold rounded-sm bg-primary text-white"
+    >
+      Invite
+    </button>
+
+    <InviteModal
+      open={inviteOpen}
+      onClose={() => setInviteOpen(false)}
+      socket={socket}
+      roomId={roomid}
+      ownerId={ownerId}
+      isPublic={isPublic}
+      setIsPublic={setIsPublic}
+    />
+
+    <CanvasStage
+      ref={canvasRef}
+      tool={tool}
+      options={options}
+      sidebarWidth={isSidebarOpen ? SIDEBAR_WIDTH : 0}
+      socket={socket}
+      roomid={roomid}
+      canJoin={canJoin}
+      username={(localStorage.getItem(USERNAME_KEY) || username).trim()}
+    />
+     <ToolsHeader tool={tool} setTool={setTool} />
+  </main>
+</div>
   );
 }
