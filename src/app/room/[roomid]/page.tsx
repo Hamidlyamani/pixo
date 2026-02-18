@@ -165,7 +165,7 @@ const [options, setOptions] = useState<ToolOptions>({
   // ✅ afficher form tant que canJoin=false
   if (!canJoin) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[#555] p-4">
+      <div className="min-h-dvh flex items-center justify-center bg-[#555] p-4">
         <div className="w-full max-w-md rounded-2xl bg-white p-5 shadow-xl">
           <div className="font-semibold text-lg">
             Join the room
@@ -217,7 +217,7 @@ const [options, setOptions] = useState<ToolOptions>({
     </div>
   </div>
 ) :  (
-    <div className="relative flex h-screen w-screen overflow-hidden bg-[#555]">
+    <div className="relative flex h-dvh w-screen overflow-hidden bg-[#555]">
   {/* Toggle sidebar */}
   <button
     onClick={() => setIsSidebarOpen((prev) => !prev)}
@@ -232,7 +232,7 @@ const [options, setOptions] = useState<ToolOptions>({
   {isSidebarOpen && (
     <aside
       style={{ width: SIDEBAR_WIDTH }}
-      className="h-screen overflow-y-auto bg-blue-100 border-r border-blue-200"
+      className="h-dvh overflow-y-auto bg-blue-100 border-r border-blue-200"
     >
       <Sidebar
         options={options}
@@ -246,7 +246,7 @@ const [options, setOptions] = useState<ToolOptions>({
   )}
 
   {/* Canvas area */}
-  <main className="relative flex-1 h-screen overflow-hidden">
+  <main className="relative flex-1 h-dvh overflow-hidden">
     <button
       onClick={() => setInviteOpen(true)}
       className="absolute top-4 right-4 z-50 px-2 py-1 md:px-6 md:py-2 uppercase font-bold rounded-sm bg-primary text-white"

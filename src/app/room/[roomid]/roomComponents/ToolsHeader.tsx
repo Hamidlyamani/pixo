@@ -6,7 +6,7 @@ import {
   FaFont,
   FaSlash,
   FaRegSquare,
-  FaRegCircle
+  FaRegCircle  
 } from "react-icons/fa";import { IoIosBrush } from "react-icons/io";
 import { TOOLS } from "./helpers/tools";
 

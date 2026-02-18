@@ -35,7 +35,7 @@ export default function BackgroundSlider({
   }, []);
 
   return (
-    <div className="relative h-screen w-full overflow-hidden">
+    <div className="relative h-dvh w-full overflow-hidden">
       {/* Desktop */}
       {images.map((img, i) => (
         <div
@@ -44,6 +44,9 @@ export default function BackgroundSlider({
           style={{
             backgroundImage: `url(${img})`,
             opacity: i === index ? 1 : 0,
+            backgroundPosition:'center',
+            backgroundRepeat:'no-repeat',
+            backgroundSize:'cover'
           }}
         />
       ))}
@@ -56,12 +59,15 @@ export default function BackgroundSlider({
           style={{
             backgroundImage: `url(${img})`,
             opacity: i === index ? 1 : 0,
+            backgroundPosition:'center',
+            backgroundRepeat:'no-repeat',
+            backgroundSize:'cover'
           }}
         />
       ))}
 
 
-      <div className="relative z-10 flex h-full min-h-screen  w-full items-center justify-center">
+      <div className="relative z-10 flex h-full min-h-dvh w-full items-center justify-center">
         {children}
       </div>
     </div>

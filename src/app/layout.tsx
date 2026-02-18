@@ -75,7 +75,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           montserrat.variable,
           dmSans.variable,
           sourGummy.variable,
-          "min-h-screen antialiased",
+          "min-h-dvh antialiased",
         ].join(" ")}
       >
         {children}

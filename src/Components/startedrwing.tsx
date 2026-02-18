@@ -5,7 +5,6 @@ import Link from "next/link";
 import { MdElectricBolt } from "react-icons/md";
 
 type LiquidGlassProProps = {
-  children: React.ReactNode;
   className?: string;
   rounded?: "2xl" | "3xl" | "4xl";
   strength?: "medium" | "strong" | "insane";
@@ -148,33 +147,35 @@ export function LiquidGlassPro({
         />
 
         {/* Content */}
-        <div className="relative z-10 p-4 md:p-7"><div className="flex justify-center flex-col items-center">
-          <h1 className="text-xl sm:text-xl md:text-2xl lg:text-3xl xl:text-4xl font-bold text-center text-gray-900 mb-4 leading-tight">
-            <LayoutTextFlip
-              text="Let’s "
-              words={["Sketch", "Study", "Brainstorm", "Imagine", "Create", "Collaborate"]}
-            />
+        <div className="relative z-10 p-4 md:p-7">
+          <div className="flex justify-center flex-col items-center">
+            <h1 className="text-xl sm:text-xl md:text-2xl lg:text-3xl xl:text-4xl font-bold text-center text-gray-900 mb-4 leading-tight">
+              <LayoutTextFlip
+                text="Let’s "
+                words={["Sketch", "Study", "Brainstorm", "Imagine", "Create", "Collaborate"]}
+              />
 
 
-            {" "}
-            Together...
-          </h1>
-          <p className="my-2 text-black/80 text-base md:text-lg max-w-2xl  text-center">
-            Pixo is a real-time drawing app for creators, students, and friends.<br />
-            Create, refine, and build ideas together on one shared canvas.
-          </p>
-          <Link
-            href="/join"
-            onClick={() => setLoading(true)}
-            className="bg-primary px-6 py-2 font-bold text-black uppercase rounded-md text-center mt-2 m-auto inline-flex items-center justify-center gap-2"
-          >
-            {loading && (
-              <span className="w-4 h-4 border-2 border-black border-t-transparent rounded-full animate-spin" />
-            )}
-            {loading ? "Loading..." : "Start Drawing"}
-          </Link>
-          <span className="text-sm mt-2 text-black/80 flex gap-1 items-center"><MdElectricBolt className="text-green-600" /> Free. Instant. No account needed.</span>
-        </div></div>
+              {" "}
+              Together...
+            </h1>
+            <p className="my-2 text-black/80 text-base md:text-lg max-w-2xl  text-center">
+              Pixo is a real-time drawing app for creators, students, and friends.<br />
+              Create, refine, and build ideas together on one shared canvas.
+            </p>
+            <Link
+              href="/join"
+              onClick={() => setLoading(true)}
+              className="bg-primary p-6 py-2 font-bold text-black uppercase rounded-md text-center mt-2 m-auto inline-flex items-center justify-center gap-2"
+            >
+              {loading && (
+                <span className="w-4 h-4 border-2 border-black border-t-transparent rounded-full animate-spin" />
+              )}
+              {loading ? "Loading..." : "Start Drawing"}
+            </Link>
+            <span className="text-sm mt-2 text-black/80 flex gap-1 items-center"><MdElectricBolt className="text-green-600" /> Free. Instant. No account needed.</span>
+          </div>
+        </div>
       </div>
 
       {/* keyframes */}
