@@ -1,6 +1,6 @@
 "use client";
 import React, { useState } from "react";
-import { LayoutTextFlip } from "@/Components/TextFlip";
+import { LayoutTextFlip } from "@/app/Components/TextFlip";
 import Link from "next/link";
 import { MdElectricBolt } from "react-icons/md";
 

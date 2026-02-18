@@ -1,5 +1,5 @@
-import BackgroundSlider from "@/Components/BackgroundSlider";
-import PixoInfos from "@/Components/PixoInfos";
+import BackgroundSlider from "@/app/Components/BackgroundSlider";
+import PixoInfos from "@/app/Components/PixoInfos";
 
 
 

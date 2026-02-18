@@ -1,4 +1,4 @@
-import { LiquidGlassPro } from "@/Components/startedrwing";
+import { LiquidGlassPro } from "@/app/Components/startedrwing";
 
 import { montserrat } from "../fonts";
 
