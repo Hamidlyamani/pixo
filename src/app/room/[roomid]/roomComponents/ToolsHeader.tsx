@@ -6,8 +6,7 @@ import {
   FaFont,
   FaSlash,
   FaRegSquare,
-  FaRegCircle ,
-  FaHandPaper
+  FaRegCircle
 } from "react-icons/fa";import { IoIosBrush } from "react-icons/io";
 import { TOOLS } from "./helpers/tools";
 
@@ -57,7 +56,6 @@ export default function ToolsHeader({ tool, setTool }: ToolsHeaderProps) {
         <Button value={TOOLS.LINE} icon={<FaSlash />} />
         <Button value={TOOLS.RECT} icon={<FaRegSquare  />} />
         <Button value={TOOLS.ELLIPSE} icon={<FaRegCircle  />} />
-        <Button value={TOOLS.HAND} icon={<FaHandPaper />} />
       </div>
     </div>
   );

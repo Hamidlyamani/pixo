@@ -3,12 +3,20 @@
 import { useEffect, useState } from "react";
 
 const images = [
-
-  "/imgs/home1.png",
+  "/imgs/1.webp",
+  "/imgs/2.webp",
   "/imgs/3.webp",
-  "/imgs/hom.png",
-  "/imgs/6.png",
-  "/imgs/home7.png",
+  "/imgs/4.webp",
+  "/imgs/5.webp",
+  "/imgs/6.webp",
+];
+const imagesMob = [
+  "/imgs/1mob.webp",
+  "/imgs/2.webp",
+  "/imgs/3mob.webp",
+  "/imgs/4mob.webp",
+  "/imgs/5mob.webp",
+  "/imgs/6mob.webp",
 ];
 
 export default function BackgroundSlider({
@@ -28,10 +36,11 @@ export default function BackgroundSlider({
 
   return (
     <div className="relative h-screen w-full overflow-hidden">
+      {/* Desktop */}
       {images.map((img, i) => (
         <div
-          key={img}
-          className="absolute inset-0 bg-cover bg-no-repeat !bg-center transition-opacity duration-1000"
+          key={`desktop-${img}`}
+          className="absolute inset-0 bg-cover bg-no-repeat bg-center transition-opacity duration-1000 hidden md:block"
           style={{
             backgroundImage: `url(${img})`,
             opacity: i === index ? 1 : 0,
@@ -39,7 +48,20 @@ export default function BackgroundSlider({
         />
       ))}
 
-      <div className="relative z-10 flex h-full min-h-screen w-full w-full items-center justify-center">
+      {/* Mobile */}
+      {imagesMob.map((img, i) => (
+        <div
+          key={`mobile-${img}`}
+          className="absolute inset-0 bg-cover bg-no-repeat bg-center transition-opacity duration-1000 block md:hidden"
+          style={{
+            backgroundImage: `url(${img})`,
+            opacity: i === index ? 1 : 0,
+          }}
+        />
+      ))}
+
+
+      <div className="relative z-10 flex h-full min-h-screen  w-full items-center justify-center">
         {children}
       </div>
     </div>

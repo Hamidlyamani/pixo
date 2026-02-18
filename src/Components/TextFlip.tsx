@@ -49,7 +49,7 @@ export const LayoutTextFlip = ({
             transition={{
               duration: 0.5,
             }}
-            className={"inline-block whitespace-nowrap text-center px-1  relative   after:content-['']  after:absolute  after:left-[5%]  after:-bottom-2  after:w-full  after:h-3  after:bg-[url('/imgs/elem.png')]  after:bg-contain  after:bg-no-repeat"}
+            className={"inline-block whitespace-nowrap text-center px-1  relative   after:content-['']  after:absolute  after:left-[5%]  after:-bottom-2  after:w-full  after:h-3  after:bg-[url('/imgs/elem.webp')]  after:bg-contain  after:bg-no-repeat"}
           >
             {words[currentIndex]}
             

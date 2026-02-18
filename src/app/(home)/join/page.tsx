@@ -6,6 +6,9 @@ import { SiGoogleclassroom } from "react-icons/si";
 import { getSocket } from "@/lib/socket";
 import type { Socket } from "socket.io-client";
 import { montserrat } from "@/app/fonts";
+import { IoMdPerson } from "react-icons/io";
+
+
 
 type PublicRoomItem = {
   roomId: string;
@@ -77,6 +80,7 @@ export default function HomeJoinBox() {
   }, [socketReady]);
 
   const createRoom = () => {
+    setLoading(true);
     const socket = socketRef.current;
     if (!socket) return;
 
@@ -114,6 +118,7 @@ export default function HomeJoinBox() {
   };
 
   const joinPublicRoom = (roomId: string) => {
+    
     const socket = socketRef.current;
     if (!socket) return;
 
@@ -145,6 +150,9 @@ export default function HomeJoinBox() {
     socket.emit("room:join", { roomId, username });
   };
 
+
+
+   const [loading, setLoading] = useState(false);
   return (
     <div
       className={` ${montserrat.className} 
@@ -162,7 +170,7 @@ export default function HomeJoinBox() {
           Your username
         </label>
         <div className="mt-1 flex items-center gap-2 rounded-lg border border-black/10 bg-white px-3 py-2">
-          <span className="text-black/30">👤</span>
+          <span className="text-black/30"><IoMdPerson /></span>
           <input
             value={name}
             onChange={(e) => setName(e.target.value)}
@@ -199,8 +207,13 @@ export default function HomeJoinBox() {
         disabled={!canStart}
         className="mt-4 w-full rounded-xl bg-primary py-2 text-sm font-semibold text-white hover:bg-primary/90 active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-50"
       >
-        Start a room
+         {loading && (
+        <span className="w-4 h-4 border-2 border-black border-t-transparent rounded-full animate-spin" />
+      )}
+      {loading ? "Loading..." : "Start a room"}
+        
       </button>
+       
 
       {/* Divider */}
       <div className="my-4 flex items-center gap-3">

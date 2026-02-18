@@ -9,7 +9,8 @@ import { GoSidebarCollapse, GoSidebarExpand } from "react-icons/go";
 import { getSocket } from "@/lib/socket";
 import { useRouter, useParams } from "next/navigation";
 import InviteModal from "./roomComponents/helpers/InviteModal";
-
+import Image from "next/image";
+import rotate from "/public/imgs/rotate.webp"
 const USERNAME_KEY = "wb_username";
 
 export default function RoomPage() {
@@ -206,12 +207,12 @@ const [options, setOptions] = useState<ToolOptions>({
   }
 
  return isPortraitMobile ? (
-  <div className="fixed inset-0 z-[9999] bg-black/85 flex items-center justify-center p-6">
-    <div className="max-w-sm text-center text-white">
-      {/* <Image></Image> */}
-      <div className="text-xl font-semibold">Tourne ton téléphone</div>
+  <div className="fixed inset-0 z-[9999] bg-blue/35 flex items-center justify-center p-6">
+    <div className="max-w-sm text-center text-black/80">
+    <Image src={rotate} alt="pixo " className="w-[50px] mx-auto my-4" width={50} />
+      <div className="text-xl font-semibold">Rotate Your Device</div>
       <div className="mt-2 text-sm opacity-90">
-        Utilise le mode paysage pour le whiteboard.
+        For the best experience, rotate your device to use it in landscape orientation.
       </div>
     </div>
   </div>

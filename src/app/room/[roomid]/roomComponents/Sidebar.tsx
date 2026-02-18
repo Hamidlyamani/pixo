@@ -180,7 +180,7 @@ export default function Sidebar({ options, setOptions, onExportJpg, users, mySoc
       <div className="space-y-2  bg-blue-50 m-1 text-[11px]">
         <button
           onClick={onExportJpg}
-          className="px-2 py-1 rounded-sm bg-gray-600 text-white w-full"
+          className="px-2 py-1 rounded-sm bg-gray-600 text-white w-full mb-5 md:mb-1"
         >
           Export as JPG
         </button>
