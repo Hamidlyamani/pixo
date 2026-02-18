@@ -113,7 +113,7 @@ export default function HomeJoinBox() {
     socket.emit("room:create", {
       roomName: rName || "Untitled room",
       username,
-      isPublic: true,
+      isPublic: false,
     });
   };
 
@@ -207,9 +207,7 @@ export default function HomeJoinBox() {
         disabled={!canStart}
         className="mt-4 w-full rounded-xl bg-primary py-2 text-sm font-semibold text-white hover:bg-primary/90 active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-50"
       >
-         {loading && (
-        <span className="w-4 h-4 border-2 border-black border-t-transparent rounded-full animate-spin" />
-      )}
+        
       {loading ? "Loading..." : "Start a room"}
         
       </button>

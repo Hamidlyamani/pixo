@@ -249,7 +249,7 @@ const [options, setOptions] = useState<ToolOptions>({
   <main className="relative flex-1 h-dvh overflow-hidden">
     <button
       onClick={() => setInviteOpen(true)}
-      className="absolute top-4 right-4 z-50 px-2 py-1 md:px-6 md:py-2 uppercase font-bold rounded-sm bg-primary text-white"
+      className="absolute top-2 right-2 md:top-4 md:right-4 z-50 px-2 py-1 md:px-6 md:py-2 uppercase font-bold rounded-sm bg-primary text-white"
     >
       Invite
     </button>

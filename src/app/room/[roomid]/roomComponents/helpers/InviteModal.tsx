@@ -107,16 +107,15 @@ const onError = (err: RoomError): void => {
   };
 
   return (
-    <div className="fixed inset-0 z-50  flex items-start justify-end bg-black/40">
-      <div className="w-full max-w-md mr-4 mt-16 rounded-md bg-white p-4 shadow-xl">
-        <div className="flex items-center justify-between">
+    <div className="fixed inset-0 z-[9999999]  flex items-start justify-end bg-black/40">
+     <div className="w-full max-w-md mx-auto mt-4 md:mx-0 md:mr-4 md:mt-16 rounded-md bg-white p-2 md:p-4 shadow-xl">  <div className="flex items-center justify-between">
           <div className="font-semibold">Inviter</div>
           <button onClick={onClose} className="px-2 py-1 rounded-lg bg-gray-100">
             ✕
           </button>
         </div>
 
-        <div className="mt-4 space-y-4">
+        <div className=" mt-2 md:mt-4 space-y-2 md:space-y-4">
           {/* Lien */}
           <div>
             <div className="text-sm font-medium mb-1">Lien d’invitation</div>

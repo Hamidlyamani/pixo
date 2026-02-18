@@ -34,7 +34,7 @@ export default function Sidebar({ options, setOptions, onExportJpg, users, mySoc
           <div className="flex justify-between gap-1 w-1/2">
             <label>Size</label>
             <input
-              type="number"
+              type="text"
               className={classIpute}
               min={8}
               max={96}
@@ -70,7 +70,7 @@ export default function Sidebar({ options, setOptions, onExportJpg, users, mySoc
           <div className="w-1/2 justify-between flex gap-1 ">
             <label>Space</label>
             <input
-              type="number"
+              type="text"
               className={classIpute}
               min={0}
               max={20}
@@ -129,7 +129,7 @@ export default function Sidebar({ options, setOptions, onExportJpg, users, mySoc
           <div className="flex gap-1">
             <label>Size</label>
             <input
-              type="number"
+              type="text"
               className="flex items-center justify-center pl-1 w-[30px] "
               min={8}
               max={96}
