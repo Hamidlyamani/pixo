@@ -151,10 +151,10 @@ const onError = (err: RoomError): void => {
                 disabled={!isOwner || loadingVis}
                 onClick={() => togglePublic(!isPublic)}
                 className={`px-3 py-2 rounded-lg text-sm ${
-                  isPublic ? "bg-green-600 text-white" : "bg-gray-200"
+                  !isPublic ? "bg-green-600 text-white" : "bg-gray-200"
                 } ${(!isOwner) ? "opacity-50 cursor-not-allowed" : ""}`}
               >
-                {isPublic ? "Activée" : "Désactivée"}
+                {!isPublic ? "Activée" : "Désactivée"}
               </button>
             </div>
 

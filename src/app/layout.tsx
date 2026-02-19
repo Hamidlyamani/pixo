@@ -2,6 +2,7 @@ import "@/app/globals.css";
 import type { Metadata, Viewport } from "next";
 
 import { inter, montserrat, dmSans, sourGummy } from "./fonts";
+import Script from "next/script";
 
 
 export const viewport: Viewport = {
@@ -69,6 +70,20 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
+
+      <head>
+        <Script async src="https://www.googletagmanager.com/gtag/js?id=G-KFM42VMMVJ"></Script>
+        <Script>
+           {`
+          window.dataLayer = window.dataLayer || [];
+          function gtag(){dataLayer.push(arguments);}
+          gtag('js', new Date());
+          gtag('config', 'G-KFM42VMMVJ');
+           `}
+        </Script>
+        <meta name="google-site-verification" content="google-site-verification=vIx7jmlMKp-c9Vp3exTm1dLk1Zy8kssYXH31wKwgnpw" />
+
+      </head>
       <body
         className={[
           inter.variable,
