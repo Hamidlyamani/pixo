@@ -13,7 +13,7 @@ export const viewport: Viewport = {
 };
 // ✅ Metadata complet
 export const metadata: Metadata = {
-  metadataBase: new URL("https://your-domain.com"), // change ça
+  metadataBase: new URL("https://pixospace.onrender.com"), // change ça
   title: {
     default: "Pixo - Draw together in real time",
     template: "%s — Pixo",
@@ -21,9 +21,9 @@ export const metadata: Metadata = {
   description:
     "Pixo is a real-time multi-user drawing app for creators, students, and friends. Draw together online instantly.",
   applicationName: "Pixo",
-  authors: [{ name: "Hamido", url: "https://your-portfolio.com" }], // change ça
+  authors: [{ name: "Elyamani Hamid", url: "https://elyamani.me/" }], // change ça
   creator: "Hamido",
-  keywords: ["collaborative drawing", "whiteboard", "real-time", "canvas", "pixo"],
+  keywords: ["collaborative drawing", "whiteboard", "real-time", "canvas", "pixo","online whiteboard", "whiteboard online"," drawing online", "collaborative drawing", "online notes"],
   robots: { index: true, follow: true },
 
   icons: {
@@ -42,7 +42,7 @@ export const metadata: Metadata = {
   // ✅ Open Graph (partage)
   openGraph: {
     type: "website",
-    url: "https://your-domain.com",
+    url: "https://pixospace.onrender.com",
     title: "Pixo: Draw together in real time",
     description:
       "A real-time shared canvas for creators, students, and friends. Start a room and draw together instantly.",
